@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -10,11 +10,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
-  ShieldAlert,
   ExternalLink,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { getAdminMe, logoutAdmin, type AdminUser } from '@/lib/api'
 
 /**
  * CATATAN KEAMANAN (AGENTS.md & docs/arsitektur.md):
@@ -34,13 +35,61 @@ const ADMIN_NAV = [
 export default function AdminLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false)
-  const [showLogoutAlert, setShowLogoutAlert] = useState(false)
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null)
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const navigate = useNavigate()
 
+  useEffect(() => {
+    let isMounted = true
 
-  // Removed effect that closed mobile drawer on route change; navigation links now close drawer via onClick handlers
-  // useEffect(() => {
-  //   setIsMobileDrawerOpen(false)
-  // }, [location.pathname])
+    async function checkAuth() {
+      try {
+        const user = await getAdminMe()
+        if (isMounted) {
+          setCurrentUser(user)
+          setIsLoadingAuth(false)
+        }
+      } catch {
+        if (isMounted) {
+          setIsLoadingAuth(false)
+          navigate('/loginadminkatar', { replace: true })
+        }
+      }
+    }
+
+    checkAuth()
+
+    return () => {
+      isMounted = false
+    }
+  }, [navigate])
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logoutAdmin()
+    } catch {
+      // Abaikan error jika sudah tidak valid
+    } finally {
+      setIsLoggingOut(false)
+      navigate('/loginadminkatar', { replace: true })
+    }
+  }
+
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen bg-[#060B18] text-[#E6ECF8] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-[#2F6BFF] animate-spin" />
+          <p className="text-sm text-[#9AA8C4]">Memuat sesi administrasi...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const roleLabel = currentUser?.role === 'superadmin' ? 'Superadmin' : 'Admin'
+  const initial = (currentUser?.name || currentUser?.username || 'A').charAt(0).toUpperCase()
 
   return (
     <div className="min-h-screen flex bg-[#060B18] text-[#E6ECF8]">
@@ -178,54 +227,54 @@ export default function AdminLayout() {
             </span>
           </div>
 
-          {/* User Placeholder & Logout Placeholder Button */}
+          {/* User Profile & Tombol Logout */}
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#111B33] border border-slate-700 flex items-center justify-center text-xs font-bold text-[#22D3EE]">
-                P
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold',
+                    currentUser?.role === 'superadmin'
+                      ? 'bg-purple-950/80 border-purple-600 text-purple-300'
+                      : 'bg-[#111B33] border-cyan-700 text-[#22D3EE]',
+                  )}
+                >
+                  {initial}
+                </div>
+                <div className="hidden sm:flex flex-col text-right">
+                  <span className="text-xs font-semibold text-[#E6ECF8]">
+                    {currentUser?.name || currentUser?.username}
+                  </span>
+                    <span
+                      className={cn(
+                        'text-[10px] font-medium leading-tight',
+                        currentUser?.role === 'superadmin' ? 'text-purple-400' : 'text-[#7182A4]',
+                      )}
+                    >
+                      {roleLabel}
+                    </span>
+                </div>
               </div>
-              <div className="hidden sm:flex flex-col text-right">
-                <span className="text-xs font-semibold text-[#E6ECF8]">
-                  Pengurus (Admin)
-                </span>
-                <span className="text-[10px] text-[#7182A4] leading-tight">
-                  Sesi Sementara
-                </span>
-              </div>
-            </div>
 
-            {/* Tombol Keluar (Placeholder yang belum aktif) */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowLogoutAlert(true)}
-              className="text-[#F87171] hover:text-red-300 hover:bg-red-950/30"
-              title="Tombol ini adalah placeholder (akan dihubungkan pada modul autentikasi)"
-            >
-              <LogOut className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Keluar</span>
-            </Button>
-          </div>
+              {/* Tombol Keluar */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="text-[#F87171] hover:text-red-300 hover:bg-red-950/30 cursor-pointer"
+                title="Keluar dari sesi admin"
+              >
+                {isLoggingOut ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <LogOut className="w-4 h-4 mr-1.5" />
+                )}
+                <span className="hidden sm:inline">
+                  {isLoggingOut ? 'Keluar...' : 'Keluar'}
+                </span>
+              </Button>
+            </div>
         </header>
-
-        {/* Modal / Toast Peringatan Logout Placeholder */}
-        {showLogoutAlert && (
-          <div className="bg-amber-950/40 border-b border-amber-800/60 px-6 py-3 flex items-center justify-between text-xs text-amber-200">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>
-                <strong>Catatan UI / Dev:</strong> Tombol 'Keluar' ini masih berupa placeholder antarmuka dan belum fungsional. Otentikasi dan logout API akan diintegrasikan pada modul Autentikasi.
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowLogoutAlert(false)}
-              className="ml-4 font-bold text-amber-300 hover:text-white"
-            >
-              Tutup
-            </button>
-          </div>
-        )}
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-8">

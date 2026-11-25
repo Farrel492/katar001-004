@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Enums\UserRole;
 
-#[Fillable(['name', 'email', 'password', 'username', 'role', 'is_active', 'must_change_password'])]
+#[Fillable(['name', 'email', 'password', 'username', 'role', 'is_active', 'must_change_password', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -33,6 +33,7 @@ class User extends Authenticatable
             'role' => \App\Enums\UserRole::class,
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 }

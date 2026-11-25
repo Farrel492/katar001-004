@@ -1,11 +1,83 @@
+@import "@fontsource-variable/plus-jakarta-sans";
 @import "tailwindcss";
 @import "./styles/tokens.css";
 
+@theme {
+  --font-sans: var(--font-family-sans);
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-violet: var(--violet);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+}
+
+/* Base Body Styles */
 body {
   margin: 0;
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  min-height: 100vh;
+  background-color: var(--bg-base);
+  color: var(--text-main);
+  font-family: var(--font-family-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Angka tabular untuk data keuangan & tabel */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Indikator fokus keyboard aksesibel */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Seleksi teks */
+::selection {
+  background-color: rgba(34, 211, 238, 0.25);
+  color: var(--text-main);
+}
+
+/* Menghormati preferensi prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Glassmorphism terukur (hanya untuk navbar scroll, StatCard unggulan, modal) */
+.glass-effect {
+  background-color: rgba(12, 20, 39, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Gradient aksen halus */
+.gradient-primary-accent {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+}
+
+.gradient-hero-bg {
+  background: radial-gradient(circle at 50% 0%, rgba(47, 107, 255, 0.15) 0%, rgba(34, 211, 238, 0.05) 45%, transparent 70%);
 }

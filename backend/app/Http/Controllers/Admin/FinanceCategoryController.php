@@ -9,6 +9,7 @@ use App\Models\FinanceCategory;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class FinanceCategoryController extends Controller
 {
@@ -52,5 +53,27 @@ class FinanceCategoryController extends Controller
         ]);
 
         return response()->json($category);
+    }
+
+    public function destroy(Request $request, FinanceCategory $category): JsonResponse
+    {
+        if ($category->transactions()->exists()) {
+            throw ValidationException::withMessages([
+                'category' => ['Kategori tidak dapat dihapus karena sudah memiliki transaksi terkait. Anda dapat menonaktifkannya agar tidak muncul pada pencatatan transaksi baru.'],
+            ]);
+        }
+
+        $id = $category->id;
+        $name = $category->name;
+        $category->delete();
+
+        AuditLogger::log($request->user(), 'finance_category_deleted', $request, [
+            'category_id' => $id,
+            'name' => $name,
+        ]);
+
+        return response()->json([
+            'message' => 'Kategori berhasil dihapus.',
+        ]);
     }
 }

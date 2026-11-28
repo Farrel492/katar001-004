@@ -21,7 +21,6 @@ import {
   CardContent,
   Input,
   Select,
-  Textarea,
   Badge,
   Modal,
   ConfirmDialog,
@@ -37,13 +36,14 @@ import {
   getAdminFinanceCategories,
   createAdminFinanceCategory,
   updateAdminFinanceCategory,
+  deleteAdminFinanceCategory,
   getAdminFinanceSettings,
   updateAdminFinanceSettings,
   createAdminFinanceTransaction,
   updateAdminFinanceTransaction,
   deleteAdminFinanceTransaction,
   publishAdminFinanceTransaction,
-  correctAdminFinanceTransaction,
+  unpublishAdminFinanceTransaction,
   uploadAdminFinanceProof,
   deleteAdminFinanceProof,
   getAdminFinanceProofUrl,
@@ -92,25 +92,13 @@ export default function AdminFinancePage() {
   const [txCounterpartyPublic, setTxCounterpartyPublic] = useState<boolean>(false)
   const [txSubmitting, setTxSubmitting] = useState(false)
 
-  // Modal State: Koreksi Transaksi
-  const [isCorrectModalOpen, setIsCorrectModalOpen] = useState(false)
-  const [correctingTx, setCorrectingTx] = useState<FinanceTransactionData | null>(null)
-  const [correctReason, setCorrectReason] = useState('')
-  const [withReplacement, setWithReplacement] = useState(false)
-  const [repType, setRepType] = useState<FinanceType>('income')
-  const [repCategoryId, setRepCategoryId] = useState<string>('')
-  const [repAmount, setRepAmount] = useState<string>('')
-  const [repDate, setRepDate] = useState<string>(new Date().toISOString().slice(0, 10))
-  const [repDescription, setRepDescription] = useState<string>('')
-  const [repCounterparty, setRepCounterparty] = useState<string>('')
-  const [repCounterpartyPublic, setRepCounterpartyPublic] = useState<boolean>(false)
-  const [correctSubmitting, setCorrectSubmitting] = useState(false)
-
   // Modal State: Kelola Kategori
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatType, setNewCatType] = useState<FinanceType>('income')
   const [catSubmitting, setCatSubmitting] = useState(false)
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState<FinanceCategoryData | null>(null)
+  const [deleteCatLoading, setDeleteCatLoading] = useState(false)
 
   // Modal State: Pengaturan Saldo Awal
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
@@ -124,8 +112,9 @@ export default function AdminFinancePage() {
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofSubmitting, setProofSubmitting] = useState(false)
 
-  // Dialog Konfirmasi Terbit / Hapus
+  // Dialog Konfirmasi Terbit / Tarik Kembali / Hapus
   const [confirmPublishId, setConfirmPublishId] = useState<number | null>(null)
+  const [confirmUnpublishId, setConfirmUnpublishId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -189,12 +178,8 @@ export default function AdminFinancePage() {
     setIsTxModalOpen(true)
   }
 
-  // Handler Buka Modal Ubah Transaksi (Draft)
+  // Handler Buka Modal Ubah Transaksi
   const handleOpenEditTx = (tx: FinanceTransactionData) => {
-    if (tx.status === 'published') {
-      showToast('Transaksi yang sudah terbit tidak dapat diubah.', 'error')
-      return
-    }
     setEditingTx(tx)
     setTxType(tx.type)
     setTxCategoryId(String(tx.category_id))
@@ -238,7 +223,7 @@ export default function AdminFinancePage() {
           counterparty: txCounterparty.trim() || null,
           counterparty_public: txCounterpartyPublic,
         })
-        showToast('Transaksi draft berhasil diperbarui.', 'success')
+        showToast('Transaksi berhasil diperbarui.', 'success')
       } else {
         await createAdminFinanceTransaction({
           type: txType,
@@ -283,13 +268,30 @@ export default function AdminFinancePage() {
     }
   }
 
-  // Hapus Transaksi (Draft)
+  // Tarik Kembali ke Draf
+  const handleConfirmUnpublish = async () => {
+    if (!confirmUnpublishId) return
+    try {
+      setActionLoading(true)
+      await unpublishAdminFinanceTransaction(confirmUnpublishId)
+      showToast('Transaksi berhasil ditarik kembali ke draf.', 'success')
+      setConfirmUnpublishId(null)
+      loadData()
+    } catch (err: unknown) {
+      const msg = err instanceof ApiError ? err.message : 'Gagal menarik kembali transaksi.'
+      showToast(msg, 'error')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Hapus Transaksi (Soft Delete)
   const handleConfirmDelete = async () => {
     if (!confirmDeleteId) return
     try {
       setActionLoading(true)
       await deleteAdminFinanceTransaction(confirmDeleteId)
-      showToast('Transaksi draft berhasil dihapus.', 'success')
+      showToast('Transaksi berhasil dihapus.', 'success')
       setConfirmDeleteId(null)
       loadData()
     } catch (err: unknown) {
@@ -299,75 +301,6 @@ export default function AdminFinancePage() {
       setActionLoading(false)
     }
   }
-
-  // Buka Modal Koreksi Transaksi
-  const handleOpenCorrect = (tx: FinanceTransactionData) => {
-    setCorrectingTx(tx)
-    setCorrectReason('')
-    setWithReplacement(false)
-    // Preset pengganti sama dengan transaksi asli
-    setRepType(tx.type)
-    setRepCategoryId(String(tx.category_id))
-    setRepAmount(String(tx.amount))
-    setRepDate(tx.transaction_date.slice(0, 10))
-    setRepDescription(tx.description)
-    setRepCounterparty(tx.counterparty || '')
-    setRepCounterpartyPublic(tx.counterparty_public)
-    setIsCorrectModalOpen(true)
-  }
-
-  // Eksekusi Koreksi Transaksi
-  const handleSaveCorrection = async () => {
-    if (!correctingTx) return
-    if (!correctReason.trim()) {
-      showToast('Alasan koreksi transaksi wajib diisi.', 'error')
-      return
-    }
-
-    let repPayload = undefined
-    if (withReplacement) {
-      const repRawAmount = Number(repAmount.replace(/[^\d]/g, ''))
-      if (!repRawAmount || repRawAmount <= 0) {
-        showToast('Nominal transaksi pengganti harus lebih dari Rp 0.', 'error')
-        return
-      }
-      if (!repCategoryId) {
-        showToast('Kategori transaksi pengganti wajib dipilih.', 'error')
-        return
-      }
-      if (!repDescription.trim()) {
-        showToast('Keterangan transaksi pengganti wajib diisi.', 'error')
-        return
-      }
-      repPayload = {
-        type: repType,
-        category_id: Number(repCategoryId),
-        amount: repRawAmount,
-        transaction_date: repDate,
-        description: repDescription.trim(),
-        counterparty: repCounterparty.trim() || null,
-        counterparty_public: repCounterpartyPublic,
-      }
-    }
-
-    try {
-      setCorrectSubmitting(true)
-      await correctAdminFinanceTransaction(correctingTx.id, {
-        correction_reason: correctReason.trim(),
-        replacement: repPayload,
-      })
-
-      showToast('Transaksi berhasil dikoreksi dengan entri pembalik atomik.', 'success')
-      setIsCorrectModalOpen(false)
-      loadData()
-    } catch (err: unknown) {
-      const msg = err instanceof ApiError ? err.message : 'Gagal memproses koreksi transaksi.'
-      showToast(msg, 'error')
-    } finally {
-      setCorrectSubmitting(false)
-    }
-  }
-
   // Kelola Kategori: Tambah Kategori
   const handleAddCategory = async () => {
     if (!newCatName.trim()) {
@@ -406,6 +339,24 @@ export default function AdminFinancePage() {
     } catch (err: unknown) {
       const msg = err instanceof ApiError ? err.message : 'Gagal mengubah status kategori.'
       showToast(msg, 'error')
+    }
+  }
+
+  // Kelola Kategori: Hapus Kategori
+  const handleDeleteCategory = async () => {
+    if (!confirmDeleteCat) return
+    try {
+      setDeleteCatLoading(true)
+      await deleteAdminFinanceCategory(confirmDeleteCat.id)
+      showToast(`Kategori "${confirmDeleteCat.name}" berhasil dihapus.`, 'success')
+      setConfirmDeleteCat(null)
+      const catRes = await getAdminFinanceCategories()
+      setCategories(catRes)
+    } catch (err: unknown) {
+      const msg = err instanceof ApiError ? err.message : 'Gagal menghapus kategori.'
+      showToast(msg, 'error')
+    } finally {
+      setDeleteCatLoading(false)
     }
   }
 
@@ -483,14 +434,14 @@ export default function AdminFinancePage() {
 
   return (
     <div className="space-y-6">
-        {/* Toast */}
-        {toast && (
-          <div className="fixed bottom-5 right-5 z-50">
-            <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
-          </div>
-        )}
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50">
+          <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
+        </div>
+      )}
 
-        {/* Header Halaman */}
+      {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#E6ECF8] tracking-tight">
@@ -733,8 +684,8 @@ export default function AdminFinancePage() {
                           <div className="flex items-center gap-2">
                             <span
                               className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isIncome
-                                  ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
-                                  : 'bg-rose-950/60 text-rose-400 border border-rose-800/60'
+                                ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
+                                : 'bg-rose-950/60 text-rose-400 border border-rose-800/60'
                                 }`}
                             >
                               {isIncome ? 'Masuk' : 'Keluar'}
@@ -806,51 +757,54 @@ export default function AdminFinancePage() {
                         </td>
                         <td className="py-4 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Tombol Ubah: langsung edit data transaksi ini */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEditTx(tx)}
+                              className="text-[#9AA8C4] hover:text-[#22D3EE] min-h-[38px] px-2"
+                              title="Ubah transaksi ini"
+                              aria-label="Ubah transaksi ini"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+
+                            {/* Tombol Publikasi / Tarik Kembali ke Draf */}
                             {tx.status === 'draft' ? (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleOpenEditTx(tx)}
-                                  className="text-[#9AA8C4] hover:text-[#22D3EE] min-h-[38px] px-2"
-                                  title="Ubah transaksi draft"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setConfirmPublishId(tx.id)}
-                                  className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 min-h-[38px] px-2"
-                                  title="Terbitkan transaksi"
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setConfirmDeleteId(tx.id)}
-                                  className="text-red-400 hover:text-red-300 hover:bg-red-950/30 min-h-[38px] px-2"
-                                  title="Hapus draft"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmPublishId(tx.id)}
+                                className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 min-h-[38px] px-2"
+                                title="Terbitkan transaksi"
+                                aria-label="Terbitkan transaksi"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </Button>
                             ) : (
-                              /* Status Published: Hanya Boleh Dikoreksi */
-                              !isCorrection && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleOpenCorrect(tx)}
-                                  className="text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 min-h-[38px] px-2.5 text-xs font-semibold"
-                                  title="Koreksi transaksi ini"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                                  Koreksi
-                                </Button>
-                              )
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmUnpublishId(tx.id)}
+                                className="text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 min-h-[38px] px-2"
+                                title="Tarik kembali ke draf"
+                                aria-label="Tarik kembali ke draf"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
                             )}
+
+                            {/* Tombol Hapus: tersedia untuk semua transaksi */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmDeleteId(tx.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-950/30 min-h-[38px] px-2"
+                              title="Hapus transaksi"
+                              aria-label="Hapus transaksi"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -890,13 +844,14 @@ export default function AdminFinancePage() {
             </div>
           )}
         </div>
-      )}
+      )
+      }
 
       {/* Modal 1: Tambah / Ubah Transaksi */}
       <Modal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
-        title={editingTx ? 'Ubah Transaksi Draft' : 'Catat Transaksi Kas Baru'}
+        title={editingTx ? 'Ubah Transaksi' : 'Catat Transaksi Kas Baru'}
         size="lg"
       >
         <div className="space-y-4">
@@ -910,8 +865,8 @@ export default function AdminFinancePage() {
                 if (first) setTxCategoryId(String(first.id))
               }}
               className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${txType === 'income'
-                  ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
-                  : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
+                ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
                 }`}
             >
               <ArrowUpRight className="w-4 h-4 text-emerald-400" />
@@ -926,8 +881,8 @@ export default function AdminFinancePage() {
                 if (first) setTxCategoryId(String(first.id))
               }}
               className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${txType === 'expense'
-                  ? 'bg-rose-950/40 border-rose-500 text-rose-300'
-                  : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
+                ? 'bg-rose-950/40 border-rose-500 text-rose-300'
+                : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
                 }`}
             >
               <ArrowDownRight className="w-4 h-4 text-rose-400" />
@@ -1045,156 +1000,13 @@ export default function AdminFinancePage() {
               disabled={txSubmitting}
               className="min-h-[44px]"
             >
-              {txSubmitting ? 'Menyimpan...' : editingTx ? 'Simpan Perubahan Draft' : 'Simpan sebagai Draft'}
+              {txSubmitting ? 'Menyimpan...' : editingTx ? 'Simpan Perubahan' : 'Simpan sebagai Draft'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Modal 2: Koreksi Transaksi */}
-      <Modal
-        isOpen={isCorrectModalOpen}
-        onClose={() => setIsCorrectModalOpen(false)}
-        title="Koreksi Transaksi Kas Terbit"
-        size="lg"
-      >
-        {correctingTx && (
-          <div className="space-y-4">
-            {/* Rincian Transaksi Asli */}
-            <div className="p-4 bg-[#060B18] border border-amber-800/60 rounded-xl space-y-2 text-xs">
-              <span className="font-bold text-amber-400 block uppercase tracking-wider">
-                Transaksi Asli yang Dikoreksi:
-              </span>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-[#E6ECF8]">
-                <span>
-                  <strong>{formatDate(correctingTx.transaction_date)}</strong> — {correctingTx.description}
-                </span>
-                <span className="font-mono font-bold text-amber-300">
-                  {formatRupiah(correctingTx.amount)} ({correctingTx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'})
-                </span>
-              </div>
-              <p className="text-[11px] text-[#9AA8C4] leading-relaxed pt-1 border-t border-slate-800">
-                Sistem akan membuat <strong>transaksi pembalik bertipe berlawanan</strong> ({correctingTx.type === 'income' ? 'Pengeluaran' : 'Pemasukan'} senilai {formatRupiah(correctingTx.amount)}) secara atomik untuk menetralkan buku kas.
-              </p>
-            </div>
-
-            {/* Alasan Koreksi */}
-            <FormField htmlFor="correct-reason" label="Alasan Koreksi (Wajib Diisi)" required helperText="Tercatat di riwayat transparansi dan audit log">
-              <Textarea
-                id="correct-reason"
-                value={correctReason}
-                onChange={(e) => setCorrectReason(e.target.value)}
-                placeholder="Jelaskan alasan koreksi (mis. salah input nominal, salah kategori, kwitansi dobel)..."
-                rows={3}
-                maxLength={200}
-                required
-              />
-            </FormField>
-
-            {/* Checkbox Sertakan Transaksi Pengganti */}
-            <label className="flex items-center gap-2.5 p-3 bg-[#060B18] border border-slate-800 rounded-xl cursor-pointer text-xs font-semibold text-[#E6ECF8]">
-              <input
-                type="checkbox"
-                checked={withReplacement}
-                onChange={(e) => setWithReplacement(e.target.checked)}
-                className="w-4 h-4 rounded text-[#2F6BFF] bg-slate-800 border-slate-700"
-              />
-              <span>Buat transaksi pengganti sekarang (langsung diterbitkan).</span>
-            </label>
-
-            {/* Form Transaksi Pengganti */}
-            {withReplacement && (
-              <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-4">
-                <span className="text-xs font-bold text-[#22D3EE] uppercase tracking-wider block">
-                  Data Transaksi Pengganti:
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField htmlFor="rep-category" label="Kategori Pengganti" required>
-                    <Select
-                      value={repCategoryId}
-                      onChange={(e) => setRepCategoryId(e.target.value)}
-                      options={categories
-                        .filter((c) => c.type === repType && c.is_active)
-                        .map((c) => ({ value: String(c.id), label: c.name }))}
-                    />
-                  </FormField>
-
-                  <FormField htmlFor="rep-amount" label="Nominal Sebenarnya (Rp)" required>
-                    <Input
-                      id="rep-amount"
-                      type="text"
-                      value={repAmount ? formatRupiah(repAmount).replace('Rp ', '') : ''}
-                      onChange={(e) => setRepAmount(e.target.value.replace(/[^\d]/g, ''))}
-                      placeholder="Nominal benar"
-                      required
-                    />
-                  </FormField>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField htmlFor="rep-date" label="Tanggal Transaksi Pengganti" required>
-                    <Input
-                      id="rep-date"
-                      type="date"
-                      value={repDate}
-                      onChange={(e) => setRepDate(e.target.value)}
-                      required
-                    />
-                  </FormField>
-
-                  <FormField htmlFor="rep-counterparty" label="Pihak Terkait">
-                    <Input
-                      id="rep-counterparty"
-                      type="text"
-                      value={repCounterparty}
-                      onChange={(e) => setRepCounterparty(e.target.value)}
-                      placeholder="Pihak terkait"
-                      maxLength={80}
-                    />
-                  </FormField>
-                </div>
-
-                <FormField htmlFor="rep-desc" label="Keterangan Transaksi Pengganti" required>
-                  <Input
-                    id="rep-desc"
-                    type="text"
-                    value={repDescription}
-                    onChange={(e) => setRepDescription(e.target.value)}
-                    placeholder="Keterangan transaksi sebenarnya"
-                    maxLength={200}
-                    required
-                  />
-                </FormField>
-              </div>
-            )}
-
-            {/* Tombol Aksi */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsCorrectModalOpen(false)}
-                disabled={correctSubmitting}
-                className="min-h-[44px]"
-              >
-                Batal
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSaveCorrection}
-                disabled={correctSubmitting}
-                className="min-h-[44px] bg-amber-600 hover:bg-amber-500"
-              >
-                {correctSubmitting ? 'Memproses Koreksi...' : 'Eksekusi Koreksi Transaksi'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Modal 3: Kelola Kategori */}
+      {/* Modal 2: Kelola Kategori */}
       <Modal
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
@@ -1261,16 +1073,27 @@ export default function AdminFinancePage() {
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleToggleCategoryActive(cat)}
-                  className={`text-xs px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${cat.is_active
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleCategoryActive(cat)}
+                    className={`text-xs px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${cat.is_active
                       ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
                       : 'border-emerald-800 text-emerald-400 hover:bg-emerald-950/40'
-                    }`}
-                >
-                  {cat.is_active ? 'Nonaktifkan' : 'Aktifkan'}
-                </button>
+                      }`}
+                  >
+                    {cat.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteCat(cat)}
+                    className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-rose-900/50"
+                    title={`Hapus kategori ${cat.name}`}
+                    aria-label={`Hapus kategori ${cat.name}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1410,26 +1233,47 @@ export default function AdminFinancePage() {
           </div>
         )}
       </Modal>
-
       {/* Dialog Konfirmasi Terbitkan Transaksi */}
       <ConfirmDialog
         isOpen={confirmPublishId !== null}
         onClose={() => setConfirmPublishId(null)}
         onConfirm={handleConfirmPublish}
         title="Terbitkan Transaksi Kas"
-        description="Apakah Anda yakin ingin menerbitkan transaksi ini? Sesuai aturan akuntansi, transaksi yang sudah terbit TIDAK DAPAT diubah atau dihapus (hanya dapat dikoreksi melalui entri pembalik)."
+        description="Apakah Anda yakin ingin menerbitkan transaksi ini? Transaksi yang terbit akan tampil di buku kas transparansi warga dan mempengaruhi saldo publik."
         confirmLabel={actionLoading ? 'Menerbitkan...' : 'Ya, Terbitkan'}
         variant="primary"
       />
 
-        {/* Dialog Konfirmasi Hapus Draft */}
+      {/* Dialog Konfirmasi Tarik Kembali ke Draf */}
+      <ConfirmDialog
+        isOpen={confirmUnpublishId !== null}
+        onClose={() => setConfirmUnpublishId(null)}
+        onConfirm={handleConfirmUnpublish}
+        title="Tarik Kembali ke Draf"
+        description="Apakah Anda yakin ingin menarik kembali transaksi ini ke status draf? Transaksi berstatus draf tidak akan tampil di buku kas publik maupun mempengaruhi saldo publik warga."
+        confirmLabel={actionLoading ? 'Menarik...' : 'Ya, Tarik ke Draf'}
+        variant="primary"
+      />
+
+      {/* Dialog Konfirmasi Hapus Transaksi */}
       <ConfirmDialog
         isOpen={confirmDeleteId !== null}
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={handleConfirmDelete}
-        title="Hapus Transaksi Draft"
-        description="Apakah Anda yakin ingin menghapus draf transaksi ini? Data akan dipindahkan ke arsip sementara (soft-delete)."
+        title="Hapus Transaksi Kas"
+        description="Apakah Anda yakin ingin menghapus transaksi ini? Data akan dipindahkan ke arsip sementara (soft-delete)."
         confirmLabel={actionLoading ? 'Menghapus...' : 'Ya, Hapus'}
+        variant="danger"
+      />
+
+      {/* Dialog Konfirmasi Hapus Kategori */}
+      <ConfirmDialog
+        isOpen={confirmDeleteCat !== null}
+        onClose={() => setConfirmDeleteCat(null)}
+        onConfirm={handleDeleteCategory}
+        title="Hapus Kategori Keuangan"
+        description={`Apakah Anda yakin ingin menghapus kategori "${confirmDeleteCat?.name}"? Tindakan ini tidak dapat dibatalkan. Kategori hanya dapat dihapus jika belum pernah digunakan pada transaksi kas.`}
+        confirmLabel={deleteCatLoading ? 'Menghapus...' : 'Ya, Hapus Kategori'}
         variant="danger"
       />
     </div>

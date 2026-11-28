@@ -44,6 +44,7 @@ Route::prefix('public')->name('public.')->middleware('throttle:public-api')->gro
     // Transparansi Keuangan Publik
     Route::get('finance/summary', [PublicFinanceController::class, 'summary'])->name('finance.summary');
     Route::get('finance/transactions', [PublicFinanceController::class, 'transactions'])->name('finance.transactions');
+    Route::get('finance/categories', [PublicFinanceController::class, 'categories'])->name('finance.categories');
 });
 
 Route::get('/user', function (Request $request) {
@@ -132,6 +133,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::get('', [FinanceCategoryController::class, 'index'])->name('index');
                 Route::post('', [FinanceCategoryController::class, 'store'])->name('store');
                 Route::patch('{category}', [FinanceCategoryController::class, 'update'])->name('update');
+                Route::delete('{category}', [FinanceCategoryController::class, 'destroy'])->name('destroy');
             });
 
             // Ekspor CSV
@@ -145,6 +147,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::patch('{transaction}', [FinanceTransactionController::class, 'update'])->name('update');
                 Route::delete('{transaction}', [FinanceTransactionController::class, 'destroy'])->name('destroy');
                 Route::post('{transaction}/publish', [FinanceTransactionController::class, 'publish'])->name('publish');
+                Route::post('{transaction}/unpublish', [FinanceTransactionController::class, 'unpublish'])->name('unpublish');
                 Route::post('{transaction}/correct', [FinanceTransactionController::class, 'correct'])->name('correct');
 
                 // Bukti Nota (Disk Private)

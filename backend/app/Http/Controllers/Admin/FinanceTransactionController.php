@@ -95,13 +95,6 @@ class FinanceTransactionController extends Controller
 
     public function update(UpdateTransactionRequest $request, FinanceTransaction $transaction): JsonResponse
     {
-        // Transaksi yang sudah terbit TIDAK boleh diubah
-        if ($transaction->status === 'published') {
-            throw ValidationException::withMessages([
-                'status' => ['Transaksi yang sudah terbit tidak dapat diubah. Gunakan fitur koreksi transaksi.'],
-            ]);
-        }
-
         $validated = $request->validated();
         $validated['updated_by'] = $request->user()->id;
 
@@ -119,22 +112,19 @@ class FinanceTransactionController extends Controller
 
     public function destroy(Request $request, FinanceTransaction $transaction): JsonResponse
     {
-        // Transaksi yang sudah terbit TIDAK boleh dihapus
-        if ($transaction->status === 'published') {
-            throw ValidationException::withMessages([
-                'status' => ['Transaksi yang sudah terbit tidak dapat dihapus. Gunakan fitur koreksi transaksi.'],
-            ]);
-        }
-
         $id = $transaction->id;
+        $status = $transaction->status;
+        $amount = (int) $transaction->amount;
         $transaction->delete();
 
         AuditLogger::log($request->user(), 'finance_tx_deleted', $request, [
             'transaction_id' => $id,
+            'status' => $status,
+            'amount' => $amount,
         ]);
 
         return response()->json([
-            'message' => 'Transaksi draft berhasil dihapus.',
+            'message' => 'Transaksi berhasil dihapus.',
         ]);
     }
 
@@ -153,6 +143,30 @@ class FinanceTransactionController extends Controller
         ]);
 
         AuditLogger::log($request->user(), 'finance_tx_published', $request, [
+            'transaction_id' => $transaction->id,
+            'amount' => (int) $transaction->amount,
+        ]);
+
+        $transaction->load(['category:id,name,type', 'updater:id,name,username']);
+
+        return response()->json($transaction);
+    }
+
+    public function unpublish(Request $request, FinanceTransaction $transaction): JsonResponse
+    {
+        if ($transaction->status === 'draft') {
+            throw ValidationException::withMessages([
+                'status' => ['Transaksi ini sudah berstatus draft.'],
+            ]);
+        }
+
+        $transaction->update([
+            'status' => 'draft',
+            'published_at' => null,
+            'updated_by' => $request->user()->id,
+        ]);
+
+        AuditLogger::log($request->user(), 'finance_tx_unpublished', $request, [
             'transaction_id' => $transaction->id,
             'amount' => (int) $transaction->amount,
         ]);

@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RotateCcw,
-  CheckCircle2,
   Table as TableIcon,
   BarChart3,
 } from 'lucide-react'
@@ -24,7 +23,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import {
   getPublicFinanceSummary,
   getPublicFinanceTransactions,
-  getAdminFinanceCategories,
+  getPublicFinanceCategories,
   type FinanceSummaryData,
   type PublicFinanceTransactionData,
   type FinanceCategoryData,
@@ -88,7 +87,7 @@ export default function FinancePage() {
           category_id: filterCategory ? Number(filterCategory) : undefined,
           page,
         }),
-        categories.length === 0 ? getAdminFinanceCategories().catch(() => []) : Promise.resolve(categories),
+        categories.length === 0 ? getPublicFinanceCategories().catch(() => []) : Promise.resolve(categories),
       ])
 
       setTransactions(txRes.data)
@@ -119,462 +118,434 @@ export default function FinancePage() {
   )
 
   return (
-        <div className="py-8 sm:py-12 space-y-12 max-w-6xl mx-auto px-4 sm:px-6">
-          {/* Header Halaman */}
-          <div className="text-center space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2F6BFF]/10 border border-[#2F6BFF]/20 text-xs font-semibold text-[#22D3EE]">
-              <Wallet className="w-3.5 h-3.5" />
-              Transparansi Kas RT 001 RW 004
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#E6ECF8] tracking-tight">
-              Laporan Transparansi Keuangan Warga
-            </h1>
-            <p className="text-sm sm:text-base text-[#9AA8C4] max-w-2xl mx-auto leading-relaxed">
-              Seluruh penerimaan iuran, donasi, dan pengeluaran kegiatan disajikan secara akurat dan terbuka untuk menjamin akuntabilitas bersama.
-            </p>
-          </div>
+    <div className="py-8 sm:py-12 space-y-12 max-w-6xl mx-auto px-4 sm:px-6">
+      {/* Header Halaman */}
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2F6BFF]/10 border border-[#2F6BFF]/20 text-xs font-semibold text-[#22D3EE]">
+          <Wallet className="w-3.5 h-3.5" />
+          Transparansi Kas RT 001 RW 004
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#E6ECF8] tracking-tight">
+          Laporan Transparansi Keuangan Warga
+        </h1>
+        <p className="text-sm sm:text-base text-[#9AA8C4] max-w-2xl mx-auto leading-relaxed">
+          Seluruh penerimaan iuran, donasi, dan pengeluaran kegiatan disajikan secara akurat dan terbuka untuk menjamin akuntabilitas bersama.
+        </p>
+      </div>
 
-            {/* Bagian 1: Saldo Kas Besar & Ringkasan Tahun Ini */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              {/* Kartu Saldo Kas Terbuka (5 cols) */}
-              <div className="lg:col-span-5 flex flex-col justify-between p-6 sm:p-8 bg-gradient-to-br from-[#0C1427] to-[#111E3D] border border-[#2F6BFF]/40 rounded-3xl shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-[#22D3EE]/10 rounded-full blur-2xl pointer-events-none" />
-
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-[#22D3EE] tracking-widest uppercase">
-                    Saldo Akhir Kas Berjalan
-                  </span>
-                  <div className="text-3xl sm:text-4xl font-black text-white tracking-tight pt-1">
-                    {summaryLoading ? (
-                      <div className="h-10 w-48 bg-slate-800 rounded animate-pulse" />
-                    ) : (
-                      formatRupiah(summary?.balance ?? 0)
-                    )}
-                  </div>
-                  <p className="text-xs text-[#9AA8C4] pt-1 leading-relaxed">
-                    Dihitung otomatis dari saldo awal dan seluruh transaksi kas masuk/keluar berstatus terbit.
-                  </p>
-                </div>
-
-                <div className="pt-6 border-t border-slate-800/80 mt-6 grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-[11px] text-[#9AA8C4] block uppercase tracking-wider font-semibold">
-                      Tahun Buku
+              {/* Bagian 1: Kartu Ringkasan Keuangan (sinkron dengan admin) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Saldo Awal Kas */}
+                <Card className="bg-[#0C1427] border-slate-800/80">
+                  <CardContent className="p-4 sm:p-5">
+                    <span className="text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider block">
+                      Saldo Awal Kas
                     </span>
-                    <span className="text-sm font-bold text-[#E6ECF8]">
-                      Tahun {selectedYear}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-[#9AA8C4] block uppercase tracking-wider font-semibold">
-                      Status Verifikasi
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Terverifikasi
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            {/* Ringkasan Arus Kas Tahunan (7 cols) */}
-            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Pemasukan Tahun Ini */}
-              <Card className="bg-[#0C1427] border-slate-800/80 flex flex-col justify-between">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between text-[#9AA8C4]">
-                    <span className="text-xs font-semibold uppercase tracking-wider">
-                      Total Pemasukan
-                    </span>
-                    <ArrowUpRight className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <span className="text-xl sm:text-2xl font-black text-emerald-400 mt-2 block">
-                    {summaryLoading ? '...' : formatRupiah(summary?.total_income_year ?? 0)}
-                  </span>
-                  <span className="text-[11px] text-[#9AA8C4] block mt-1">
-                    Tahun {selectedYear}
-                  </span>
-                </CardContent>
-              </Card>
-
-              {/* Pengeluaran Tahun Ini */}
-              <Card className="bg-[#0C1427] border-slate-800/80 flex flex-col justify-between">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between text-[#9AA8C4]">
-                    <span className="text-xs font-semibold uppercase tracking-wider">
-                      Total Pengeluaran
-                    </span>
-                    <ArrowDownRight className="w-4 h-4 text-rose-400" />
-                  </div>
-                  <span className="text-xl sm:text-2xl font-black text-rose-400 mt-2 block">
-                    {summaryLoading ? '...' : formatRupiah(summary?.total_expense_year ?? 0)}
-                  </span>
-                  <span className="text-[11px] text-[#9AA8C4] block mt-1">
-                    Tahun {selectedYear}
-                  </span>
-                </CardContent>
-              </Card>
-
-              {/* Surplus / Defisit Bersih */}
-              <Card className="bg-[#0C1427] border-slate-800/80 flex flex-col justify-between">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between text-[#9AA8C4]">
-                    <span className="text-xs font-semibold uppercase tracking-wider">
-                      Surplus / Selisih
-                    </span>
-                    <Wallet className="w-4 h-4 text-[#22D3EE]" />
-                  </div>
-                  <span
-                    className={`text-xl sm:text-2xl font-black mt-2 block ${(summary?.net_year ?? 0) >= 0 ? 'text-[#22D3EE]' : 'text-rose-400'
-                      }`}
-                  >
-                    {summaryLoading ? '...' : formatRupiah(summary?.net_year ?? 0)}
-                  </span>
-                  <span className="text-[11px] text-[#9AA8C4] block mt-1">
-                    Arus kas bersih {selectedYear}
-                  </span>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Bagian 2: Grafik Batang Arus Kas Bulanan (SVG Murni) & Tabel Aksesibilitas */}
-          <Card className="bg-[#0C1427] border-slate-800/80 shadow-xl overflow-hidden">
-            <CardHeader className="p-6 pb-2 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-lg font-bold text-[#E6ECF8] flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-[#22D3EE]" />
-                  Grafik Arus Kas Bulanan ({selectedYear})
-                </CardTitle>
-                <CardDescription className="text-xs text-[#9AA8C4] mt-0.5">
-                  Perbandingan nominal kas masuk (biru muda) vs kas keluar (merah muda) per bulan.
-                </CardDescription>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {/* Toggle Tampilkan Tabel Alternatif */}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowAccessibleTable((prev) => !prev)}
-                  className="text-xs min-h-[40px] cursor-pointer"
-                >
-                  <TableIcon className="w-3.5 h-3.5 mr-1.5" />
-                  {showAccessibleTable ? 'Sembunyikan Tabel Data' : 'Tampilkan Tabel Data'}
-                </Button>
-
-                {/* Pilihan Tahun */}
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="bg-[#060B18] border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-[#E6ECF8] focus:outline-none focus:border-[#2F6BFF] min-h-[40px]"
-                >
-                  <option value={2026}>Tahun 2026</option>
-                  <option value={2025}>Tahun 2025</option>
-                </select>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-6">
-              {summaryLoading ? (
-                <div className="h-64 flex flex-col items-center justify-center gap-3">
-                  <Spinner />
-                  <p className="text-xs text-[#9AA8C4]">Memuat visual grafik arus kas...</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Visual SVG Bar Chart */}
-                  <div className="w-full overflow-x-auto pb-2">
-                    <div className="min-w-[680px]">
-                      <svg
-                        viewBox="0 0 760 220"
-                        className="w-full h-56 overflow-visible"
-                        aria-hidden="true"
-                      >
-                        {/* Garis Bantu Grid Horizontal */}
-                        <line x1="40" y1="20" x2="740" y2="20" stroke="#1E293B" strokeDasharray="4 4" />
-                        <line x1="40" y1="70" x2="740" y2="70" stroke="#1E293B" strokeDasharray="4 4" />
-                        <line x1="40" y1="120" x2="740" y2="120" stroke="#1E293B" strokeDasharray="4 4" />
-                        <line x1="40" y1="170" x2="740" y2="170" stroke="#334155" strokeWidth="1.5" />
-
-                        {/* Batang Per Bulan */}
-                        {monthlyData.map((m, idx) => {
-                          const groupX = 55 + idx * 56
-                          const barW = 14
-                          const maxBarH = 140
-
-                          const incH = Math.max(2, (m.income / maxMonthlyVal) * maxBarH)
-                          const expH = Math.max(2, (m.expense / maxMonthlyVal) * maxBarH)
-
-                          const incY = 170 - incH
-                          const expY = 170 - expH
-
-                          return (
-                            <g key={m.month} className="group cursor-pointer">
-                              {/* Batang Pemasukan (Cyan) */}
-                              <rect
-                                x={groupX}
-                                y={incY}
-                                width={barW}
-                                height={incH}
-                                rx={3}
-                                fill="#22D3EE"
-                                className="transition-all hover:opacity-80"
-                              />
-                              {/* Batang Pengeluaran (Rose) */}
-                              <rect
-                                x={groupX + barW + 3}
-                                y={expY}
-                                width={barW}
-                                height={expH}
-                                rx={3}
-                                fill="#F87171"
-                                className="transition-all hover:opacity-80"
-                              />
-                              {/* Label Bulan */}
-                              <text
-                                x={groupX + barW}
-                                y="190"
-                                textAnchor="middle"
-                                fontSize="11"
-                                fontWeight="600"
-                                fill="#9AA8C4"
-                              >
-                                {MONTH_NAMES[idx]}
-                              </text>
-                            </g>
-                          )
-                        })}
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Legenda Grafik */}
-                  <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-[#9AA8C4] pt-2 border-t border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded bg-[#22D3EE]" />
-                      <span>Pemasukan Kas Masuk</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded bg-[#F87171]" />
-                      <span>Pengeluaran Kas Keluar</span>
-                    </div>
-                  </div>
-
-                  {/* TABEL ALTERNATIF AKSESIBEL (Screen Reader & Toggle Pengguna) */}
-                  <div className={showAccessibleTable ? 'block pt-4 border-t border-slate-800' : 'sr-only'}>
-                    <h3 className="text-sm font-bold text-[#E6ECF8] mb-3">
-                      Tabel Ringkasan Data Bulanan Tahun {selectedYear}
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <caption className="sr-only">
-                          Rincian pemasukan, pengeluaran, dan saldo bersih per bulan untuk tahun {selectedYear}
-                        </caption>
-                        <thead>
-                          <tr className="border-b border-slate-800 text-[#9AA8C4] uppercase font-semibold">
-                            <th className="py-2 px-3">Bulan</th>
-                            <th className="py-2 px-3 text-right">Pemasukan</th>
-                            <th className="py-2 px-3 text-right">Pengeluaran</th>
-                            <th className="py-2 px-3 text-right">Selisih Bersih</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {monthlyData.map((m, i) => (
-                            <tr key={m.month} className="hover:bg-slate-800/20">
-                              <td className="py-2.5 px-3 font-medium text-[#E6ECF8]">
-                                {MONTH_FULL_NAMES[i]}
-                              </td>
-                              <td className="py-2.5 px-3 text-right text-emerald-400 font-mono">
-                                {formatRupiah(m.income)}
-                              </td>
-                              <td className="py-2.5 px-3 text-right text-rose-400 font-mono">
-                                {formatRupiah(m.expense)}
-                              </td>
-                              <td
-                                className={`py-2.5 px-3 text-right font-mono font-semibold ${m.net >= 0 ? 'text-[#22D3EE]' : 'text-rose-400'
-                                  }`}
-                              >
-                                {formatRupiah(m.net)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                      <span className="text-xl sm:text-2xl font-extrabold text-[#E6ECF8] mt-1 block">
+                        {summaryLoading ? (
+                <span className="inline-block h-7 w-36 bg-slate-800 rounded animate-pulse" />
+                        ) : (
+                formatRupiah(summary?.opening_balance ?? 0)
               )}
-            </CardContent>
-          </Card>
-
-          {/* Bagian 3: Daftar Transaksi Publik Terperinci */}
-          <div className="space-y-6 pt-6 border-t border-slate-800/80">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-[#E6ECF8] tracking-tight">
-                  Buku Transaksi Kas Terbuka
-                </h2>
-                <p className="text-xs sm:text-sm text-[#9AA8C4] mt-0.5">
-                  Daftar transaksi kas resmi yang telah disetujui dan diterbitkan.
-                </p>
-              </div>
-
-              <span className="text-xs text-[#9AA8C4] px-3 py-1 bg-[#0C1427] border border-slate-800 rounded-lg self-start sm:self-auto">
-                Total {totalItems} Transaksi Terpublikasi
-              </span>
-            </div>
-
-            {/* Filter Bar */}
-            <Card className="bg-[#0C1427] border-slate-800/80">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Filter Bulan */}
-                  <div>
-                    <Input
-                      type="month"
-                      value={filterMonth}
-                      onChange={(e) => { setFilterMonth(e.target.value); setCurrentPage(1); }}
-                      className="min-h-[44px]"
-                    />
-                  </div>
-
-                  {/* Filter Jenis */}
-                  <div>
-                    <Select
-                      value={filterType}
-                      onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
-                      options={[
-                        { value: '', label: 'Semua Jenis Transaksi' },
-                        { value: 'income', label: 'Pemasukan Kas' },
-                        { value: 'expense', label: 'Pengeluaran Kas' },
-                      ]}
-                    />
-                  </div>
-
-                  {/* Filter Kategori */}
-                  <div>
-                    <Select
-                      value={filterCategory}
-                      onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1); }}
-                      options={[
-                        { value: '', label: 'Semua Kategori' },
-                        ...categories.map((c) => ({
-                          value: String(c.id),
-                          label: `${c.name} (${c.type === 'income' ? 'Masuk' : 'Keluar'})`,
-                        })),
-                      ]}
-                    />
-                  </div>
-                </div>
+                </span>
+                <span className="text-[11px] text-[#9AA8C4] block mt-1">
+                  Per {summary?.opening_date ? formatDate(summary.opening_date) : '-'}
+                </span>
               </CardContent>
             </Card>
 
-            {/* Tabel Transaksi Publik */}
-            {txLoading ? (
-              <div className="p-16 flex flex-col items-center justify-center gap-3">
-                <Spinner />
-                <p className="text-xs text-[#9AA8C4]">Memuat buku transaksi kas...</p>
+                  {/* Total Pemasukan (semua waktu, published) */}
+                  <Card className="bg-[#0C1427] border-slate-800/80">
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider">
+                          Total Pemasukan (Terbit)
+                        </span>
+                        <ArrowUpRight className="w-4 h-4 text-emerald-400" />
+                      </div>
+                          <span className="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-1 block">
+                            {summaryLoading ? '...' : formatRupiah(summary?.total_income ?? 0)}
+                          </span>
+                          <span className="text-[11px] text-[#9AA8C4] block mt-1">
+                            Daftar tersaring saat ini
+                          </span>
+                        </CardContent>
+                      </Card>
+
+                      {/* Total Pengeluaran (semua waktu, published) */}
+                      <Card className="bg-[#0C1427] border-slate-800/80">
+                        <CardContent className="p-4 sm:p-5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider">
+                              Total Pengeluaran (Terbit)
+                            </span>
+                            <ArrowDownRight className="w-4 h-4 text-rose-400" />
+                          </div>
+                      <span className="text-xl sm:text-2xl font-extrabold text-rose-400 mt-1 block">
+                        {summaryLoading ? '...' : formatRupiah(summary?.total_expense ?? 0)}
+                      </span>
+                      <span className="text-[11px] text-[#9AA8C4] block mt-1">
+                        Daftar tersaring saat ini
+                      </span>
+                    </CardContent>
+                  </Card>
+
+                          {/* Saldo Kas Berjalan */}
+                          <Card className="bg-[#0C1427] border-[#2F6BFF]/40 shadow-lg shadow-blue-950/20">
+                            <CardContent className="p-4 sm:p-5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-[#22D3EE] uppercase tracking-wider">
+                                  Saldo Kas Berjalan
+                                </span>
+                        <Wallet className="w-4 h-4 text-[#22D3EE]" />
+                      </div>
+                      <span className="text-xl sm:text-2xl font-black text-[#22D3EE] mt-1 block">
+                        {summaryLoading ? '...' : formatRupiah(summary?.balance ?? 0)}
+                      </span>
+                      <span className="text-[11px] text-[#9AA8C4] block mt-1">
+                        Akumulasi tersaring
+                      </span>
+                    </CardContent>
+                  </Card>
               </div>
-            ) : transactions.length === 0 ? (
-              <EmptyState
-                icon={<Wallet className="w-8 h-8 text-[#22D3EE]" />}
-                title="Tidak Ada Transaksi yang Sesuai"
-                description="Belum ada transaksi kas terpublikasi untuk kriteria bulan atau kategori ini."
-              />
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-[#0C1427] border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800/80 bg-[#080E1E] text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider">
-                          <th className="py-3.5 px-4">Tanggal</th>
-                          <th className="py-3.5 px-4">Jenis & Kategori</th>
-                          <th className="py-3.5 px-4">Keterangan</th>
-                          <th className="py-3.5 px-4">Pihak / Donatur</th>
-                          <th className="py-3.5 px-4 text-right">Nominal (Rp)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-sm">
-                        {transactions.map((tx) => {
-                          const isIncome = tx.type === 'income'
-                          return (
-                            <tr key={tx.id} className="hover:bg-slate-800/20 transition-colors">
-                              <td className="py-4 px-4 whitespace-nowrap text-xs text-[#9AA8C4] font-medium">
-                                {formatDate(tx.transaction_date)}
-                              </td>
-                              <td className="py-4 px-4 whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isIncome
-                                        ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
-                                        : 'bg-rose-950/60 text-rose-400 border border-rose-800/60'
+
+              {/* Bagian 2: Grafik Batang Arus Kas Bulanan (SVG Murni) & Tabel Aksesibilitas */}
+              <Card className="bg-[#0C1427] border-slate-800/80 shadow-xl overflow-hidden">
+                <CardHeader className="p-6 pb-2 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg font-bold text-[#E6ECF8] flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-[#22D3EE]" />
+                      Grafik Arus Kas Bulanan ({selectedYear})
+                    </CardTitle>
+                    <CardDescription className="text-xs text-[#9AA8C4] mt-0.5">
+                      Perbandingan nominal kas masuk (biru muda) vs kas keluar (merah muda) per bulan.
+                    </CardDescription>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {/* Toggle Tampilkan Tabel Alternatif */}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowAccessibleTable((prev) => !prev)}
+                      className="text-xs min-h-[40px] cursor-pointer"
+                    >
+                      <TableIcon className="w-3.5 h-3.5 mr-1.5" />
+                      {showAccessibleTable ? 'Sembunyikan Tabel Data' : 'Tampilkan Tabel Data'}
+                    </Button>
+
+                    {/* Pilihan Tahun */}
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-[#060B18] border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-[#E6ECF8] focus:outline-none focus:border-[#2F6BFF] min-h-[40px]"
+                    >
+                      <option value={2026}>Tahun 2026</option>
+                      <option value={2025}>Tahun 2025</option>
+                    </select>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-6">
+                  {summaryLoading ? (
+                    <div className="h-64 flex flex-col items-center justify-center gap-3">
+                      <Spinner />
+                      <p className="text-xs text-[#9AA8C4]">Memuat visual grafik arus kas...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Visual SVG Bar Chart */}
+                      <div className="w-full overflow-x-auto pb-2">
+                        <div className="min-w-[680px]">
+                          <svg
+                            viewBox="0 0 760 220"
+                            className="w-full h-56 overflow-visible"
+                            aria-hidden="true"
+                          >
+                            {/* Garis Bantu Grid Horizontal */}
+                            <line x1="40" y1="20" x2="740" y2="20" stroke="#1E293B" strokeDasharray="4 4" />
+                            <line x1="40" y1="70" x2="740" y2="70" stroke="#1E293B" strokeDasharray="4 4" />
+                            <line x1="40" y1="120" x2="740" y2="120" stroke="#1E293B" strokeDasharray="4 4" />
+                            <line x1="40" y1="170" x2="740" y2="170" stroke="#334155" strokeWidth="1.5" />
+
+                            {/* Batang Per Bulan */}
+                            {monthlyData.map((m, idx) => {
+                              const groupX = 55 + idx * 56
+                              const barW = 14
+                              const maxBarH = 140
+
+                              const incH = Math.max(2, (m.income / maxMonthlyVal) * maxBarH)
+                              const expH = Math.max(2, (m.expense / maxMonthlyVal) * maxBarH)
+
+                              const incY = 170 - incH
+                              const expY = 170 - expH
+
+                              return (
+                                <g key={m.month} className="group cursor-pointer">
+                                  {/* Batang Pemasukan (Cyan) */}
+                                  <rect
+                                    x={groupX}
+                                    y={incY}
+                                    width={barW}
+                                    height={incH}
+                                    rx={3}
+                                    fill="#22D3EE"
+                                    className="transition-all hover:opacity-80"
+                                  />
+                                  {/* Batang Pengeluaran (Rose) */}
+                                  <rect
+                                    x={groupX + barW + 3}
+                                    y={expY}
+                                    width={barW}
+                                    height={expH}
+                                    rx={3}
+                                    fill="#F87171"
+                                    className="transition-all hover:opacity-80"
+                                  />
+                                  {/* Label Bulan */}
+                                  <text
+                                    x={groupX + barW}
+                                    y="190"
+                                    textAnchor="middle"
+                                    fontSize="11"
+                                    fontWeight="600"
+                                    fill="#9AA8C4"
+                                  >
+                                    {MONTH_NAMES[idx]}
+                                  </text>
+                                </g>
+                              )
+                            })}
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Legenda Grafik */}
+                      <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-[#9AA8C4] pt-2 border-t border-slate-800/80">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded bg-[#22D3EE]" />
+                          <span>Pemasukan Kas Masuk</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded bg-[#F87171]" />
+                          <span>Pengeluaran Kas Keluar</span>
+                        </div>
+                      </div>
+
+                      {/* TABEL ALTERNATIF AKSESIBEL (Screen Reader & Toggle Pengguna) */}
+                      <div className={showAccessibleTable ? 'block pt-4 border-t border-slate-800' : 'sr-only'}>
+                        <h3 className="text-sm font-bold text-[#E6ECF8] mb-3">
+                          Tabel Ringkasan Data Bulanan Tahun {selectedYear}
+                        </h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <caption className="sr-only">
+                              Rincian pemasukan, pengeluaran, dan saldo bersih per bulan untuk tahun {selectedYear}
+                            </caption>
+                            <thead>
+                              <tr className="border-b border-slate-800 text-[#9AA8C4] uppercase font-semibold">
+                                <th className="py-2 px-3">Bulan</th>
+                                <th className="py-2 px-3 text-right">Pemasukan</th>
+                                <th className="py-2 px-3 text-right">Pengeluaran</th>
+                                <th className="py-2 px-3 text-right">Selisih Bersih</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60">
+                              {monthlyData.map((m, i) => (
+                                <tr key={m.month} className="hover:bg-slate-800/20">
+                                  <td className="py-2.5 px-3 font-medium text-[#E6ECF8]">
+                                    {MONTH_FULL_NAMES[i]}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right text-emerald-400 font-mono">
+                                    {formatRupiah(m.income)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right text-rose-400 font-mono">
+                                    {formatRupiah(m.expense)}
+                                  </td>
+                                  <td
+                                    className={`py-2.5 px-3 text-right font-mono font-semibold ${m.net >= 0 ? 'text-[#22D3EE]' : 'text-rose-400'
                                       }`}
                                   >
-                                    {isIncome ? 'Masuk' : 'Keluar'}
-                                  </span>
-                                  <span className="text-xs text-[#E6ECF8] font-medium">
-                                    {tx.category}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-4 max-w-sm">
-                                <p className="font-semibold text-[#E6ECF8]">{tx.description}</p>
-                                {tx.is_correction && (
-                                  <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-950/50 border border-amber-800/60 text-[11px] text-amber-300">
-                                    <RotateCcw className="w-3 h-3 shrink-0" />
-                                    <span>Koreksi: {tx.correction_reason || 'Penyelarasan pembukuan'}</span>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="py-4 px-4 whitespace-nowrap text-xs text-[#9AA8C4]">
-                                {tx.counterparty_label || '-'}
-                              </td>
-                              <td className="py-4 px-4 text-right whitespace-nowrap font-mono font-bold">
-                                <span className={isIncome ? 'text-emerald-400' : 'text-rose-400'}>
-                                  {isIncome ? '+' : '-'} {formatRupiah(tx.amount)}
-                                </span>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                                    {formatRupiah(m.net)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bagian 3: Daftar Transaksi Publik Terperinci */}
+              <div className="space-y-6 pt-6 border-t border-slate-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-[#E6ECF8] tracking-tight">
+                      Buku Transaksi Kas Terbuka
+                    </h2>
+                    <p className="text-xs sm:text-sm text-[#9AA8C4] mt-0.5">
+                      Daftar transaksi kas resmi yang telah disetujui dan diterbitkan.
+                    </p>
                   </div>
+
+                  <span className="text-xs text-[#9AA8C4] px-3 py-1 bg-[#0C1427] border border-slate-800 rounded-lg self-start sm:self-auto">
+                    Total {totalItems} Transaksi Terpublikasi
+                  </span>
                 </div>
 
-                {/* Paginasi Transaksi */}
-                {lastPage > 1 && (
-                  <div className="flex items-center justify-between p-3 bg-[#0C1427] border border-slate-800/80 rounded-xl text-xs text-[#9AA8C4]">
-                    <span>
-                      Halaman {currentPage} dari {lastPage}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={currentPage <= 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className="min-h-[40px]"
-                      >
-                        Sebelumnya
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={currentPage >= lastPage}
-                        onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
-                        className="min-h-[40px]"
-                      >
-                        Selanjutnya
-                      </Button>
+                {/* Filter Bar */}
+                <Card className="bg-[#0C1427] border-slate-800/80">
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Filter Bulan */}
+                      <div>
+                        <Input
+                          type="month"
+                          value={filterMonth}
+                          onChange={(e) => { setFilterMonth(e.target.value); setCurrentPage(1); }}
+                          className="min-h-[44px]"
+                        />
+                      </div>
+
+                      {/* Filter Jenis */}
+                      <div>
+                        <Select
+                          value={filterType}
+                          onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
+                          options={[
+                            { value: '', label: 'Semua Jenis Transaksi' },
+                            { value: 'income', label: 'Pemasukan Kas' },
+                            { value: 'expense', label: 'Pengeluaran Kas' },
+                          ]}
+                        />
+                      </div>
+
+                      {/* Filter Kategori */}
+                      <div>
+                        <Select
+                          value={filterCategory}
+                          onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1); }}
+                          options={[
+                            { value: '', label: 'Semua Kategori' },
+                            ...categories.map((c) => ({
+                              value: String(c.id),
+                              label: `${c.name} (${c.type === 'income' ? 'Masuk' : 'Keluar'})`,
+                            })),
+                          ]}
+                        />
+                      </div>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Tabel Transaksi Publik */}
+                {txLoading ? (
+                  <div className="p-16 flex flex-col items-center justify-center gap-3">
+                    <Spinner />
+                    <p className="text-xs text-[#9AA8C4]">Memuat buku transaksi kas...</p>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <EmptyState
+                    icon={<Wallet className="w-8 h-8 text-[#22D3EE]" />}
+                    title="Tidak Ada Transaksi yang Sesuai"
+                    description="Belum ada transaksi kas terpublikasi untuk kriteria bulan atau kategori ini."
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-[#0C1427] border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-800/80 bg-[#080E1E] text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider">
+                              <th className="py-3.5 px-4">Tanggal</th>
+                              <th className="py-3.5 px-4">Jenis & Kategori</th>
+                              <th className="py-3.5 px-4">Keterangan</th>
+                              <th className="py-3.5 px-4">Pihak / Donatur</th>
+                              <th className="py-3.5 px-4 text-right">Nominal (Rp)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60 text-sm">
+                            {transactions.map((tx) => {
+                              const isIncome = tx.type === 'income'
+                              return (
+                                <tr key={tx.id} className="hover:bg-slate-800/20 transition-colors">
+                                  <td className="py-4 px-4 whitespace-nowrap text-xs text-[#9AA8C4] font-medium">
+                                    {formatDate(tx.transaction_date)}
+                                  </td>
+                                  <td className="py-4 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isIncome
+                                          ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
+                                          : 'bg-rose-950/60 text-rose-400 border border-rose-800/60'
+                                          }`}
+                                      >
+                                        {isIncome ? 'Masuk' : 'Keluar'}
+                                      </span>
+                                      <span className="text-xs text-[#E6ECF8] font-medium">
+                                        {tx.category}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-4 px-4 max-w-sm">
+                                    <p className="font-semibold text-[#E6ECF8]">{tx.description}</p>
+                                    {tx.is_correction && (
+                                      <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-950/50 border border-amber-800/60 text-[11px] text-amber-300">
+                                        <RotateCcw className="w-3 h-3 shrink-0" />
+                                        <span>Koreksi: {tx.correction_reason || 'Penyelarasan pembukuan'}</span>
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="py-4 px-4 whitespace-nowrap text-xs text-[#9AA8C4]">
+                                    {tx.counterparty_label || '-'}
+                                  </td>
+                                  <td className="py-4 px-4 text-right whitespace-nowrap font-mono font-bold">
+                                    <span className={isIncome ? 'text-emerald-400' : 'text-rose-400'}>
+                                      {isIncome ? '+' : '-'} {formatRupiah(tx.amount)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Paginasi Transaksi */}
+                    {lastPage > 1 && (
+                      <div className="flex items-center justify-between p-3 bg-[#0C1427] border border-slate-800/80 rounded-xl text-xs text-[#9AA8C4]">
+                        <span>
+                          Halaman {currentPage} dari {lastPage}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={currentPage <= 1}
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            className="min-h-[40px]"
+                          >
+                            Sebelumnya
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={currentPage >= lastPage}
+                            onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+                            className="min-h-[40px]"
+                          >
+                            Selanjutnya
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </div>
-        )
+            </div>
+            )
 }

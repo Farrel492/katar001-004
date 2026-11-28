@@ -113,10 +113,15 @@ class FinanceTest extends TestCase
         $pubTxResponse->assertStatus(200);
         $data = $pubTxResponse->json('data');
         $this->assertCount(0, $data);
+
+        // Kategori publik dapat diakses tanpa login
+        $catResponse = $this->getJson('/api/public/finance/categories');
+        $catResponse->assertStatus(200)
+            ->assertJsonStructure([['id', 'name', 'type']]);
     }
 
-    /** 3. Transaksi published tidak bisa diubah atau dihapus (422). */
-    public function test_published_transaction_cannot_be_updated_or_deleted(): void
+    /** 3. Transaksi dapat ditarik kembali (unpublish), diubah langsung, dan dihapus (soft-delete). */
+    public function test_transaction_can_be_unpublished_updated_and_deleted(): void
     {
         $tx = FinanceTransaction::create([
             'type' => 'income',
@@ -128,21 +133,34 @@ class FinanceTest extends TestCase
             'published_at' => now(),
         ]);
 
-        // Coba Update -> tolak 422
+        // Update langsung pada record transaksi yang sama
         $this->actingAs($this->admin)
             ->patchJson("/api/admin/finance/transactions/{$tx->id}", [
                 'amount' => 200000,
+                'description' => 'Transaksi Terbit Diperbarui',
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['status']);
+            ->assertOk()
+            ->assertJson([
+                'amount' => 200000,
+                'description' => 'Transaksi Terbit Diperbarui',
+            ]);
 
-        // Coba Delete -> tolak 422
+        // Tarik kembali ke draf (unpublish)
+        $this->actingAs($this->admin)
+            ->postJson("/api/admin/finance/transactions/{$tx->id}/unpublish")
+            ->assertOk()
+            ->assertJson([
+                'status' => 'draft',
+                'published_at' => null,
+            ]);
+
+        // Hapus (soft-delete)
         $this->actingAs($this->admin)
             ->deleteJson("/api/admin/finance/transactions/{$tx->id}")
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['status']);
+            ->assertOk()
+            ->assertJson(['message' => 'Transaksi berhasil dihapus.']);
 
-        $this->assertDatabaseHas('finance_transactions', ['id' => $tx->id, 'deleted_at' => null]);
+        $this->assertSoftDeleted('finance_transactions', ['id' => $tx->id]);
     }
 
     /** 4. Koreksi membuat entri pembalik + pengganti atomik & saldo tepat. */
@@ -615,6 +633,49 @@ class FinanceTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'finance_tx_created',
+        ]);
+    }
+
+    /** 17. Admin dan Superadmin dapat menghapus kategori yang belum terikat transaksi. */
+    public function test_admin_can_delete_unused_category(): void
+    {
+        $newCat = FinanceCategory::create([
+            'name' => 'Kategori Sementara',
+            'type' => 'expense',
+            'is_active' => true,
+        ]);
+
+        $res = $this->actingAs($this->admin)->deleteJson("/api/admin/finance/categories/{$newCat->id}");
+        $res->assertOk()
+            ->assertJson(['message' => 'Kategori berhasil dihapus.']);
+
+        $this->assertDatabaseMissing('finance_categories', [
+            'id' => $newCat->id,
+        ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'finance_category_deleted',
+        ]);
+    }
+
+    /** 18. Kategori yang sudah memiliki transaksi tidak dapat dihapus (422). */
+    public function test_cannot_delete_category_with_transactions(): void
+    {
+        FinanceTransaction::create([
+            'type' => 'income',
+            'category_id' => $this->catIncome->id,
+            'amount' => 50000,
+            'transaction_date' => now()->toDateString(),
+            'description' => 'Iuran Warga RT',
+            'status' => 'draft',
+        ]);
+
+        $res = $this->actingAs($this->admin)->deleteJson("/api/admin/finance/categories/{$this->catIncome->id}");
+        $res->assertStatus(422)
+            ->assertJsonValidationErrors(['category']);
+
+        $this->assertDatabaseHas('finance_categories', [
+            'id' => $this->catIncome->id,
         ]);
     }
 }

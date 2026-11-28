@@ -15,8 +15,24 @@ class FinanceController extends Controller
     {
         $year = (int) $request->query('year', date('Y'));
 
-        // Saldo total saat ini (integer)
-        $currentBalance = FinanceTransaction::calculateCurrentBalance();
+        // Ambil pengaturan saldo awal
+        $settings = \App\Models\FinanceSetting::getSettings();
+        $openingBalance = (int) $settings->opening_balance;
+        $openingDate = $settings->opening_date instanceof \DateTimeInterface
+            ? $settings->opening_date->format('Y-m-d')
+            : (string) $settings->opening_date;
+
+        // Total seluruh transaksi published (semua waktu)
+        $totalIncomeAll = (int) FinanceTransaction::where('status', 'published')
+            ->where('type', 'income')
+            ->sum('amount');
+
+        $totalExpenseAll = (int) FinanceTransaction::where('status', 'published')
+            ->where('type', 'expense')
+            ->sum('amount');
+
+        // Saldo kas berjalan = saldo awal + total pemasukan - total pengeluaran
+        $currentBalance = $openingBalance + $totalIncomeAll - $totalExpenseAll;
 
         // Transaksi published di tahun yang diminta
         $yearTransactions = FinanceTransaction::where('status', 'published')
@@ -80,6 +96,10 @@ class FinanceController extends Controller
         usort($byCategoryExpense, fn ($a, $b) => $b['total'] <=> $a['total']);
 
         return response()->json([
+            'opening_balance' => $openingBalance,
+            'opening_date' => $openingDate,
+            'total_income' => $totalIncomeAll,
+            'total_expense' => $totalExpenseAll,
             'balance' => $currentBalance,
             'year' => $year,
             'total_income_year' => $totalIncomeYear,
@@ -133,6 +153,18 @@ class FinanceController extends Controller
         });
 
         return response()->json($paginated)
+            ->header('Cache-Control', 'public, max-age=60');
+    }
+
+    public function categories(): JsonResponse
+    {
+        $categories = FinanceCategory::where('is_active', true)
+            ->select('id', 'name', 'type')
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($categories)
             ->header('Cache-Control', 'public, max-age=60');
     }
 }

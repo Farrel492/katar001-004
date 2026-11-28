@@ -20,7 +20,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Hanya superadmin yang aktif boleh mengelola akun.
         Gate::define('manage-users', function ($user): bool {
-            return $user->role === UserRole::SUPERADMIN && (bool) $user->is_active;
+            $role = $user->role instanceof \BackedEnum ? $user->role->value : (string) $user->role;
+            return $role === 'superadmin' && (bool) $user->is_active;
         });
 
         $tooMany = function (Request $request, array $headers) {
@@ -43,6 +44,13 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('admin-password', function (Request $request) use ($tooMany) {
             return Limit::perMinute(5)
                 ->by((string) ($request->user()?->id ?: $request->ip()))
+                ->response($tooMany);
+        });
+
+        // Endpoint publik: 60/menit per IP.
+        RateLimiter::for('public-api', function (Request $request) use ($tooMany) {
+            return Limit::perMinute(60)
+                ->by($request->ip())
                 ->response($tooMany);
         });
     }

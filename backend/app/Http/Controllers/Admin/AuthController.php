@@ -25,8 +25,8 @@ class AuthController extends Controller
             ], 429);
         }
 
-        $user = User::where('username', strtolower($request->input('username')))->first();
-        if (! $user || ! Hash::check($request->input('password'), $user->password)) {
+        $user = User::withTrashed()->where('username', strtolower($request->input('username')))->first();
+        if (! $user || $user->trashed() || ! $user->is_active || ! Hash::check($request->input('password'), $user->password)) {
             RateLimiter::hit($key, 60);
             // Audit failed login (user may be null)
             AuditLogger::log($user, 'login_failed', $request);
@@ -42,13 +42,9 @@ class AuthController extends Controller
         // Regenerate session to prevent fixation
         $request->session()->regenerate();
 
-        // Update last_login_at jika kolom tersedia
-        try {
-            $user->last_login_at = now();
-            $user->save();
-        } catch (\Throwable $e) {
-            // Lanjutkan jika kolom belum termigrasi di database tertentu
-        }
+        // Update last_login_at
+        $user->last_login_at = now();
+        $user->save();
 
         // Log audit login_success
         AuditLogger::log($user, 'login_success', $request);
@@ -61,23 +57,38 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         if ($request->user()) {
-            if (method_exists($request->user(), 'currentAccessToken') && $request->user()->currentAccessToken()) {
-                $request->user()->currentAccessToken()->delete();
+            if (method_exists($request->user(), 'currentAccessToken')) {
+                $token = $request->user()->currentAccessToken();
+                if ($token && method_exists($token, 'delete')) {
+                    $token->delete();
+                }
             }
             AuditLogger::log($request->user(), 'logout', $request);
         }
 
         Auth::guard('web')->logout();
+        Auth::forgetGuards();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Logged out']);
     }
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+        $role = $user->role instanceof \BackedEnum ? $user->role->value : (string) $user->role;
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'role' => $role,
+            'must_change_password' => (bool) $user->must_change_password,
+        ]);
     }
 
     public function changePassword(ChangePasswordRequest $request)
@@ -86,7 +97,7 @@ class AuthController extends Controller
         $user->password = Hash::make($request->input('password'));
         $user->must_change_password = false;
         $user->save();
-        // AuditLogger::log($user, 'password_changed');
+        AuditLogger::log($user, 'password_changed', $request);
         return response()->json(['message' => 'Password updated']);
     }
 }

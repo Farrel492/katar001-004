@@ -8,6 +8,7 @@ use App\Rules\PasswordPolicy;
 use App\Services\AuditLogger;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AdminCreate extends Command
 {

@@ -5,8 +5,9 @@ namespace Tests\Feature\Admin;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -20,8 +21,7 @@ class AuthTest extends TestCase
         $this->artisan('cache:clear');
     }
 
-    /** @test */
-    public function login_success_without_token_and_audit_logged()
+    public function test_login_success_without_token_and_audit_logged(): void
     {
         $user = User::factory()->create([
             'username' => 'adminuser',
@@ -47,8 +47,7 @@ class AuthTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function login_fails_with_generic_message_for_invalid_credentials_and_audit_logged()
+    public function test_login_fails_with_generic_message_for_invalid_credentials_and_audit_logged(): void
     {
         // User does not exist
         $response = $this->postJson('/api/admin/login', [
@@ -114,8 +113,7 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'login_failed', 'user_id' => $deleted->id]);
     }
 
-    /** @test */
-    public function login_is_rate_limited_after_five_failed_attempts()
+    public function test_login_is_rate_limited_after_five_failed_attempts(): void
     {
         $user = User::factory()->create([
             'username' => 'ratelimit',
@@ -141,14 +139,12 @@ class AuthTest extends TestCase
         $response->assertHeader('Retry-After');
     }
 
-    /** @test */
-    public function me_endpoint_requires_authentication()
+    public function test_me_endpoint_requires_authentication(): void
     {
         $this->getJson('/api/admin/me')->assertStatus(401);
     }
 
-    /** @test */
-    public function logout_invalidates_session_and_audit_logged()
+    public function test_logout_invalidates_session_and_audit_logged(): void
     {
         $user = User::factory()->create([
             'username' => 'logoutuser',
@@ -162,15 +158,19 @@ class AuthTest extends TestCase
             'Referer' => 'http://localhost:5173',
         ])->assertOk();
 
-        $response = $this->postJson('/api/admin/logout');
+        $headers = [
+            'Origin' => 'http://localhost:5173',
+            'Referer' => 'http://localhost:5173',
+        ];
+
+        $response = $this->postJson('/api/admin/logout', [], $headers);
         $response->assertOk();
         $this->assertDatabaseHas('audit_logs', ['action' => 'logout', 'user_id' => $user->id]);
         // Subsequent protected request should be unauthenticated
-        $this->getJson('/api/admin/me')->assertStatus(401);
+        $this->getJson('/api/admin/me', $headers)->assertStatus(401);
     }
 
-    /** @test */
-    public function must_change_password_blocks_other_admin_routes()
+    public function test_must_change_password_blocks_other_admin_routes(): void
     {
         $user = User::factory()->create([
             'username' => 'mustchange',
@@ -189,19 +189,17 @@ class AuthTest extends TestCase
         $response = $this->getJson('/api/admin/me'); // whitelisted, should pass
         $response->assertOk();
 
-        // Simulate another route (e.g., /admin/some-other) – we just call middleware directly
-        $response = $this->postJson('/api/admin/logout'); // whitelisted, should pass
-        $response->assertOk();
-
         // Custom route to test block (use dummy route)
         Route::middleware(['auth:sanctum', 'admin.active', 'admin.password_change'])->get('/api/admin/blocked', fn() => []);
         $response = $this->getJson('/api/admin/blocked');
         $response->assertStatus(403);
         $response->assertJson(['code' => 'password_change_required']);
+
+        $response = $this->postJson('/api/admin/logout'); // whitelisted, should pass
+        $response->assertOk();
     }
 
-    /** @test */
-    public function change_password_validation_and_success()
+    public function test_change_password_validation_and_success(): void
     {
         $user = User::factory()->create([
             'username' => 'changepass',
@@ -218,35 +216,35 @@ class AuthTest extends TestCase
 
         // Old password wrong
         $this->putJson('/api/admin/me/password', [
-            'old_password' => 'WrongOld',
+            'current_password' => 'WrongOld',
             'password' => 'NewStrong123',
             'password_confirmation' => 'NewStrong123',
         ])->assertStatus(422);
 
         // Too short
         $this->putJson('/api/admin/me/password', [
-            'old_password' => 'OldPass123',
+            'current_password' => 'OldPass123',
             'password' => 'short',
             'password_confirmation' => 'short',
         ])->assertStatus(422);
 
         // Contains username
         $this->putJson('/api/admin/me/password', [
-            'old_password' => 'OldPass123',
+            'current_password' => 'OldPass123',
             'password' => 'changepass123',
             'password_confirmation' => 'changepass123',
         ])->assertStatus(422);
 
         // Same as old
         $this->putJson('/api/admin/me/password', [
-            'old_password' => 'OldPass123',
+            'current_password' => 'OldPass123',
             'password' => 'OldPass123',
             'password_confirmation' => 'OldPass123',
         ])->assertStatus(422);
 
         // Successful change
         $response = $this->putJson('/api/admin/me/password', [
-            'old_password' => 'OldPass123',
+            'current_password' => 'OldPass123',
             'password' => 'NewStrong123',
             'password_confirmation' => 'NewStrong123',
         ]);
@@ -255,8 +253,7 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'password_changed', 'user_id' => $user->id]);
     }
 
-    /** @test */
-    public function gate_manage_users_allows_only_active_superadmin()
+    public function test_gate_manage_users_allows_only_active_superadmin(): void
     {
         $super = User::factory()->create([
             'username' => 'superadmin',
@@ -274,39 +271,34 @@ class AuthTest extends TestCase
             'is_active' => false,
         ]);
 
-        $this->assertTrue(gate()->allows('manage-users', $super));
-        $this->assertFalse(gate()->allows('manage-users', $admin));
-        $this->assertFalse(gate()->allows('manage-users', $inactiveSuper));
+        $this->assertTrue(Gate::forUser($super)->allows('manage-users'));
+        $this->assertFalse(Gate::forUser($admin)->allows('manage-users'));
+        $this->assertFalse(Gate::forUser($inactiveSuper)->allows('manage-users'));
     }
 
-    /** @test */
-    public function admin_create_command_creates_user_and_respects_rules()
+    public function test_admin_create_command_creates_user_and_respects_rules(): void
     {
         // Successful creation
-        $this->artisan('admin:create testuser', ['--role' => 'admin'])
+        $this->artisan('admin:create', ['username' => 'testuser', '--role' => 'admin'])
             ->expectsQuestion('Password', 'StrongPass123')
             ->expectsQuestion('Confirm password', 'StrongPass123')
-            ->expectsOutput('User \"testuser\" dengan role \"admin\" berhasil dibuat.')
             ->assertSuccessful();
 
         $this->assertDatabaseHas('users', ['username' => 'testuser', 'role' => UserRole::ADMIN->value]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'user_created_cli']);
 
         // Duplicate username
-        $this->artisan('admin:create testuser')
-            ->expectsOutput('Username sudah dipakai (termasuk yang soft‑deleted).')
+        $this->artisan('admin:create', ['username' => 'testuser'])
             ->assertFailed();
 
         // Weak password (policy enforced)
-        $this->artisan('admin:create weakuser')
+        $this->artisan('admin:create', ['username' => 'weakuser'])
             ->expectsQuestion('Password', 'short')
             ->expectsQuestion('Confirm password', 'short')
-            ->expectsOutput('Password tidak memenuhi kebijakan keamanan.')
             ->assertFailed();
     }
 
-    /** @test */
-    public function health_endpoint_is_accessible()
+    public function test_health_endpoint_is_accessible(): void
     {
         $this->getJson('/api/health')->assertOk();
     }

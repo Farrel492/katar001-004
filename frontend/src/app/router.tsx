@@ -17,6 +17,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import PublicLayout from '@/app/layouts/PublicLayout'
 import AdminLayout from '@/app/layouts/AdminLayout'
+import RequireSuperadmin from '@/features/admin/RequireSuperadmin'
 import NotFoundPage from '@/features/NotFoundPage'
 import RouteErrorPage from '@/features/RouteErrorPage'
 
@@ -121,6 +122,19 @@ export const router = createBrowserRouter([
           import('@/features/admin/AdminAspirationPage').then((m) => ({
             Component: m.default,
           })),
+      },
+      {
+        path: 'pengguna',
+        element: <RequireSuperadmin />,
+        children: [
+          {
+            index: true,
+            lazy: () =>
+              import('@/features/admin/AdminUsersPage').then((m) => ({
+                Component: m.default,
+              })),
+          },
+        ],
       },
       { path: '*', element: <NotFoundPage /> },
     ],

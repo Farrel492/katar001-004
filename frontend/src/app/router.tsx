@@ -55,9 +55,23 @@ export const router = createBrowserRouter([
           })),
       },
       {
+        path: 'agenda/:slug',
+        lazy: () =>
+          import('@/features/public/EventDetailPage').then((m) => ({
+            Component: m.default,
+          })),
+      },
+      {
         path: 'dokumentasi',
         lazy: () =>
           import('@/features/public/DocumentationPage').then((m) => ({
+            Component: m.default,
+          })),
+      },
+      {
+        path: 'dokumentasi/:slug',
+        lazy: () =>
+          import('@/features/public/AlbumDetailPage').then((m) => ({
             Component: m.default,
           })),
       },
@@ -106,6 +120,20 @@ export const router = createBrowserRouter([
         path: 'agenda',
         lazy: () =>
           import('@/features/admin/AdminAgendaPage').then((m) => ({
+            Component: m.default,
+          })),
+      },
+      {
+        path: 'galeri',
+        lazy: () =>
+          import('@/features/admin/AdminGalleryPage').then((m) => ({
+            Component: m.default,
+          })),
+      },
+      {
+        path: 'galeri/:id',
+        lazy: () =>
+          import('@/features/admin/AdminGalleryDetailPage').then((m) => ({
             Component: m.default,
           })),
       },

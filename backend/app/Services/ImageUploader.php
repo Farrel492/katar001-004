@@ -24,7 +24,7 @@ class ImageUploader
      *
      * @throws ValidationException
      */
-    public function upload(UploadedFile $file, string $directory, ?string $oldPath = null, string $field = 'image'): string
+    public function upload(UploadedFile $file, string $directory, ?string $oldPath = null, string $field = 'image', string $disk = 'public'): string
     {
         if (! $file->isValid()) {
             throw ValidationException::withMessages([
@@ -73,33 +73,33 @@ class ImageUploader
         // Re-encode menggunakan GD untuk menghilangkan metadata EXIF / payload tersembunyi
         $encodedBinary = $this->reencodeWithGd($realPath, $detectedMime, $field);
 
-        // Simpan ke disk public dengan nama acak
+        // Simpan ke disk yang ditentukan dengan nama acak
         $cleanDir = trim($directory, '/\\');
         $extension = self::ALLOWED_MIMES[$detectedMime];
         $filename = Str::random(40) . '.' . $extension;
         $targetPath = $cleanDir !== '' ? "{$cleanDir}/{$filename}" : $filename;
 
-        Storage::disk('public')->put($targetPath, $encodedBinary);
+        Storage::disk($disk)->put($targetPath, $encodedBinary);
 
         // Hapus file lama jika ada
         if ($oldPath) {
-            $this->delete($oldPath);
+            $this->delete($oldPath, $disk);
         }
 
         return $targetPath;
     }
 
     /**
-     * Hapus berkas dari disk `public` jika ada.
+     * Hapus berkas dari disk jika ada.
      */
-    public function delete(?string $path): void
+    public function delete(?string $path, string $disk = 'public'): void
     {
         if (! $path) {
             return;
         }
 
-        if (Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if (Storage::disk($disk)->exists($path)) {
+            Storage::disk($disk)->delete($path);
         }
     }
 

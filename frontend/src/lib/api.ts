@@ -394,3 +394,683 @@ export async function reorderAdminMembers(
   );
 }
 
+/* ============================================================================
+ * Modul Agenda & Dokumentasi Galeri
+ * ============================================================================ */
+
+export interface EventData {
+  id: number;
+  title: string;
+  slug: string;
+  summary: string;
+  description: string;
+  category: string;
+  starts_at: string;
+  ends_at: string | null;
+  location: string | null;
+  cover_path?: string | null;
+  cover_url: string | null;
+  status: 'draft' | 'published';
+  created_at: string;
+  creator?: { id: number; name: string; username: string };
+  updater?: { id: number; name: string; username: string };
+  albums?: AlbumData[];
+}
+
+export interface AlbumPhotoData {
+  id: number;
+  album_id: number;
+  path?: string;
+  photo_url: string;
+  caption: string | null;
+  sort_order: number;
+}
+
+export interface AlbumData {
+  id: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  event_id: number | null;
+  taken_at: string | null;
+  cover_photo_id?: number | null;
+  cover_url: string | null;
+  status: 'draft' | 'published';
+  created_at: string;
+  photos_count: number;
+  event?: { id: number; title: string; slug: string } | null;
+  creator?: { id: number; name: string; username: string };
+  photos?: AlbumPhotoData[];
+}
+
+export interface PaginatedResponse<T> {
+  current_page: number;
+  data: T[];
+  first_page_url: string;
+  from: number | null;
+  last_page: number;
+  last_page_url: string;
+  next_page_url: string | null;
+  path: string;
+  per_page: number;
+  prev_page_url: string | null;
+  to: number | null;
+  total: number;
+}
+
+export interface EventPayload {
+  title: string;
+  summary: string;
+  description: string;
+  category: string;
+  starts_at: string;
+  ends_at?: string | null;
+  location?: string | null;
+  status?: 'draft' | 'published';
+}
+
+export interface AlbumPayload {
+  title: string;
+  description?: string | null;
+  event_id?: number | null;
+  taken_at?: string | null;
+  status?: 'draft' | 'published';
+}
+
+// --- Publik API ---
+
+export async function getPublicEvents(params: { scope?: 'upcoming' | 'past'; category?: string; page?: number } = {}): Promise<PaginatedResponse<EventData>> {
+  const query = new URLSearchParams();
+  if (params.scope) query.append('scope', params.scope);
+  if (params.category) query.append('category', params.category);
+  if (params.page) query.append('page', params.page.toString());
+  return await apiClient<PaginatedResponse<EventData>>(`/api/public/events?${query.toString()}`);
+}
+
+export async function getPublicEventDetail(slug: string): Promise<{ data: EventData }> {
+  return await apiClient<{ data: EventData }>(`/api/public/events/${slug}`);
+}
+
+export async function getPublicAlbums(page = 1): Promise<PaginatedResponse<AlbumData>> {
+  return await apiClient<PaginatedResponse<AlbumData>>(`/api/public/albums?page=${page}`);
+}
+
+export async function getPublicAlbumDetail(slug: string): Promise<{ data: AlbumData }> {
+  return await apiClient<{ data: AlbumData }>(`/api/public/albums/${slug}`);
+}
+
+// --- Admin API: Events ---
+
+export async function getAdminEvents(params: { status?: string; search?: string; category?: string; page?: number } = {}): Promise<PaginatedResponse<EventData>> {
+  const query = new URLSearchParams();
+  if (params.status) query.append('status', params.status);
+  if (params.search) query.append('search', params.search);
+  if (params.category) query.append('category', params.category);
+  if (params.page) query.append('page', params.page.toString());
+  return await apiClient<PaginatedResponse<EventData>>(`/api/admin/events?${query.toString()}`);
+}
+
+export async function createAdminEvent(payload: EventPayload): Promise<{ data: EventData; message: string }> {
+  return await apiClient<{ data: EventData; message: string }>('/api/admin/events', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getAdminEventDetail(id: number): Promise<{ data: EventData }> {
+  return await apiClient<{ data: EventData }>(`/api/admin/events/${id}`);
+}
+
+export async function updateAdminEvent(id: number, payload: Partial<EventPayload>): Promise<{ data: EventData; message: string }> {
+  return await apiClient<{ data: EventData; message: string }>(`/api/admin/events/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminEvent(id: number): Promise<{ message: string }> {
+  return await apiClient<{ message: string }>(`/api/admin/events/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function uploadEventCover(id: number, file: File): Promise<{ data: EventData; message: string }> {
+  const formData = new FormData();
+  formData.append('image', file);
+  return await apiClient<{ data: EventData; message: string }>(`/api/admin/events/${id}/cover`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export async function deleteEventCover(id: number): Promise<{ data: EventData; message: string }> {
+  return await apiClient<{ data: EventData; message: string }>(`/api/admin/events/${id}/cover`, {
+    method: 'DELETE',
+  });
+}
+
+export async function publishAdminEvent(id: number): Promise<{ data: EventData; message: string }> {
+  return await apiClient<{ data: EventData; message: string }>(`/api/admin/events/${id}/publish`, {
+    method: 'POST',
+  });
+}
+
+export async function unpublishAdminEvent(id: number): Promise<{ data: EventData; message: string }> {
+  return await apiClient<{ data: EventData; message: string }>(`/api/admin/events/${id}/unpublish`, {
+    method: 'POST',
+  });
+}
+
+// --- Admin API: Albums ---
+
+export async function getAdminAlbums(params: { status?: string; search?: string; page?: number } = {}): Promise<PaginatedResponse<AlbumData>> {
+  const query = new URLSearchParams();
+  if (params.status) query.append('status', params.status);
+  if (params.search) query.append('search', params.search);
+  if (params.page) query.append('page', params.page.toString());
+  return await apiClient<PaginatedResponse<AlbumData>>(`/api/admin/albums?${query.toString()}`);
+}
+
+export async function createAdminAlbum(payload: AlbumPayload): Promise<{ data: AlbumData; message: string }> {
+  return await apiClient<{ data: AlbumData; message: string }>('/api/admin/albums', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getAdminAlbumDetail(id: number): Promise<{ data: AlbumData }> {
+  return await apiClient<{ data: AlbumData }>(`/api/admin/albums/${id}`);
+}
+
+export async function updateAdminAlbum(id: number, payload: Partial<AlbumPayload>): Promise<{ data: AlbumData; message: string }> {
+  return await apiClient<{ data: AlbumData; message: string }>(`/api/admin/albums/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminAlbum(id: number): Promise<{ message: string }> {
+  return await apiClient<{ message: string }>(`/api/admin/albums/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function publishAdminAlbum(id: number): Promise<{ data: AlbumData; message: string }> {
+  return await apiClient<{ data: AlbumData; message: string }>(`/api/admin/albums/${id}/publish`, {
+    method: 'POST',
+  });
+}
+
+export async function unpublishAdminAlbum(id: number): Promise<{ data: AlbumData; message: string }> {
+  return await apiClient<{ data: AlbumData; message: string }>(`/api/admin/albums/${id}/unpublish`, {
+    method: 'POST',
+  });
+}
+
+export async function uploadAlbumPhotos(
+  albumId: number,
+  files: File[],
+  captions: string[] = []
+): Promise<{ message: string; uploaded: AlbumPhotoData[]; failed: { file: string; error: string }[]; album: AlbumData }> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('photos[]', file));
+  captions.forEach((cap) => formData.append('captions[]', cap));
+  return await apiClient<{ message: string; uploaded: AlbumPhotoData[]; failed: { file: string; error: string }[]; album: AlbumData }>(
+    `/api/admin/albums/${albumId}/photos`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+}
+
+export async function updatePhotoCaption(albumId: number, photoId: number, caption: string): Promise<{ message: string; data: AlbumPhotoData }> {
+  return await apiClient<{ message: string; data: AlbumPhotoData }>(`/api/admin/albums/${albumId}/photos/${photoId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ caption }),
+  });
+}
+
+export async function deleteAlbumPhoto(albumId: number, photoId: number): Promise<{ message: string; album: AlbumData }> {
+  return await apiClient<{ message: string; album: AlbumData }>(`/api/admin/albums/${albumId}/photos/${photoId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function reorderAlbumPhotos(albumId: number, ids: number[]): Promise<{ message: string; photos: AlbumPhotoData[] }> {
+  return await apiClient<{ message: string; photos: AlbumPhotoData[] }>(`/api/admin/albums/${albumId}/photos/reorder`, {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function setAlbumCoverPhoto(albumId: number, photoId: number): Promise<{ message: string; data: AlbumData }> {
+  return await apiClient<{ message: string; data: AlbumData }>(`/api/admin/albums/${albumId}/photos/set-cover`, {
+    method: 'POST',
+    body: JSON.stringify({ photo_id: photoId }),
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Modul Aspirasi & Saran Warga                                               */
+/* -------------------------------------------------------------------------- */
+
+export type AspirationCategory = 'saran' | 'keluhan' | 'pertanyaan' | 'usulan_kegiatan' | 'lainnya';
+export type AspirationStatus = 'new' | 'read' | 'in_progress' | 'done' | 'rejected' | 'spam';
+
+export interface AspirationData {
+  id: number;
+  tracking_code: string;
+  name?: string | null;
+  contact?: string | null;
+  category: AspirationCategory;
+  subject: string;
+  message: string;
+  status: AspirationStatus;
+  internal_note?: string | null;
+  public_reply?: string | null;
+  is_public: boolean;
+  handled_by?: number | null;
+  handler?: {
+    id: number;
+    name: string;
+    username: string;
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicAspirationData {
+  id: number;
+  author_name: string;
+  category: AspirationCategory;
+  subject: string;
+  message: string;
+  public_reply?: string | null;
+  created_at: string;
+}
+
+export interface AspirationTrackingData {
+  tracking_code: string;
+  status: AspirationStatus;
+  category: AspirationCategory;
+  subject: string;
+  public_reply?: string | null;
+  created_at: string;
+}
+
+export interface AspirationStats {
+  new: number;
+  read: number;
+  in_progress: number;
+  done: number;
+  rejected: number;
+  spam: number;
+  total: number;
+}
+
+export interface SubmitAspirationPayload {
+  name?: string | null;
+  contact?: string | null;
+  category: string;
+  subject: string;
+  message: string;
+  website?: string;
+}
+
+export async function submitAspiration(payload: SubmitAspirationPayload): Promise<{ message: string; tracking_code: string }> {
+  return await apiClient<{ message: string; tracking_code: string }>('/api/public/aspirations', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function trackAspiration(code: string): Promise<AspirationTrackingData> {
+  return await apiClient<AspirationTrackingData>(`/api/public/aspirations/track/${encodeURIComponent(code)}`);
+}
+
+export async function getPublicAspirations(page = 1): Promise<PaginatedResponse<PublicAspirationData>> {
+  return await apiClient<PaginatedResponse<PublicAspirationData>>(`/api/public/aspirations?page=${page}`);
+}
+
+export async function getAdminAspirations(params?: {
+  status?: string;
+  category?: string;
+  search?: string;
+  page?: number;
+}): Promise<PaginatedResponse<AspirationData>> {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.category) query.set('category', params.category);
+  if (params?.search) query.set('search', params.search);
+  if (params?.page) query.set('page', String(params.page));
+
+  const qs = query.toString();
+  return await apiClient<PaginatedResponse<AspirationData>>(`/api/admin/aspirations${qs ? `?${qs}` : ''}`);
+}
+
+export async function getAdminAspirationStats(): Promise<AspirationStats> {
+  return await apiClient<AspirationStats>('/api/admin/aspirations/stats');
+}
+
+export async function getAdminAspiration(id: number): Promise<AspirationData> {
+  return await apiClient<AspirationData>(`/api/admin/aspirations/${id}`);
+}
+
+export async function updateAdminAspiration(
+  id: number,
+  data: {
+    status?: string;
+    internal_note?: string | null;
+    public_reply?: string | null;
+    is_public?: boolean;
+  },
+): Promise<AspirationData> {
+  return await apiClient<AspirationData>(`/api/admin/aspirations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAdminAspiration(id: number): Promise<{ message: string }> {
+  return await apiClient<{ message: string }>(`/api/admin/aspirations/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Modul Transparansi & Pengelolaan Keuangan                                  */
+/* -------------------------------------------------------------------------- */
+
+export type FinanceType = 'income' | 'expense';
+export type FinanceStatus = 'draft' | 'published';
+
+export interface FinanceCategoryData {
+  id: number;
+  name: string;
+  type: FinanceType;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FinanceSettingData {
+  id: number;
+  opening_balance: number;
+  opening_date: string;
+  updated_by?: number | null;
+  updater?: {
+    id: number;
+    name: string;
+    username: string;
+  } | null;
+  updated_at?: string;
+}
+
+export interface FinanceTransactionData {
+  id: number;
+  type: FinanceType;
+  category_id: number;
+  amount: number;
+  transaction_date: string;
+  description: string;
+  counterparty?: string | null;
+  counterparty_public: boolean;
+  proof_path?: string | null;
+  status: FinanceStatus;
+  corrects_id?: number | null;
+  correction_reason?: string | null;
+  created_by?: number | null;
+  updated_by?: number | null;
+  published_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  category?: FinanceCategoryData;
+  creator?: { id: number; name: string; username: string };
+  updater?: { id: number; name: string; username: string };
+  original_transaction?: {
+    id: number;
+    transaction_date: string;
+    type: FinanceType;
+    amount: number;
+    description: string;
+  };
+  corrections?: Array<{
+    id: number;
+    transaction_date: string;
+    type: FinanceType;
+    amount: number;
+    description: string;
+    correction_reason?: string | null;
+  }>;
+}
+
+export interface PublicFinanceTransactionData {
+  id: number;
+  transaction_date: string;
+  type: FinanceType;
+  category: string;
+  category_id: number;
+  amount: number;
+  description: string;
+  counterparty_label?: string | null;
+  is_correction: boolean;
+  corrects_id?: number | null;
+  correction_reason?: string | null;
+}
+
+export interface FinanceSummaryData {
+  balance: number;
+  year: number;
+  total_income_year: number;
+  total_expense_year: number;
+  net_year: number;
+  monthly: Array<{
+    month: number;
+    income: number;
+    expense: number;
+    net: number;
+  }>;
+  by_category: {
+    income: Array<{ category_id: number; name: string; total: number }>;
+    expense: Array<{ category_id: number; name: string; total: number }>;
+  };
+}
+
+export interface StoreTransactionPayload {
+  type: FinanceType;
+  category_id: number;
+  amount: number;
+  transaction_date: string;
+  description: string;
+  counterparty?: string | null;
+  counterparty_public?: boolean;
+  status?: FinanceStatus;
+}
+
+export interface CorrectTransactionPayload {
+  correction_reason: string;
+  replacement?: {
+    type: FinanceType;
+    category_id: number;
+    amount: number;
+    transaction_date: string;
+    description: string;
+    counterparty?: string | null;
+    counterparty_public?: boolean;
+  };
+}
+
+// 1. Publik Keuangan
+export async function getPublicFinanceSummary(year?: number): Promise<FinanceSummaryData> {
+  const q = year ? `?year=${year}` : '';
+  return await apiClient<FinanceSummaryData>(`/api/public/finance/summary${q}`);
+}
+
+export async function getPublicFinanceTransactions(params?: {
+  month?: string;
+  type?: string;
+  category_id?: number;
+  page?: number;
+}): Promise<PaginatedResponse<PublicFinanceTransactionData>> {
+  const query = new URLSearchParams();
+  if (params?.month) query.set('month', params.month);
+  if (params?.type) query.set('type', params.type);
+  if (params?.category_id) query.set('category_id', String(params.category_id));
+  if (params?.page) query.set('page', String(params.page));
+
+  const qs = query.toString();
+  return await apiClient<PaginatedResponse<PublicFinanceTransactionData>>(
+    `/api/public/finance/transactions${qs ? `?${qs}` : ''}`,
+  );
+}
+
+// 2. Admin Keuangan - Kategori & Pengaturan
+export async function getAdminFinanceCategories(type?: string): Promise<FinanceCategoryData[]> {
+  const q = type ? `?type=${type}` : '';
+  return await apiClient<FinanceCategoryData[]>(`/api/admin/finance/categories${q}`);
+}
+
+export async function createAdminFinanceCategory(data: {
+  name: string;
+  type: FinanceType;
+  is_active?: boolean;
+}): Promise<FinanceCategoryData> {
+  return await apiClient<FinanceCategoryData>('/api/admin/finance/categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAdminFinanceCategory(
+  id: number,
+  data: {
+    name?: string;
+    is_active?: boolean;
+  },
+): Promise<FinanceCategoryData> {
+  return await apiClient<FinanceCategoryData>(`/api/admin/finance/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getAdminFinanceSettings(): Promise<FinanceSettingData> {
+  return await apiClient<FinanceSettingData>('/api/admin/finance/settings');
+}
+
+export async function updateAdminFinanceSettings(data: {
+  opening_balance: number;
+  opening_date: string;
+}): Promise<FinanceSettingData> {
+  return await apiClient<FinanceSettingData>('/api/admin/finance/settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// 3. Admin Keuangan - Transaksi & Bukti
+export async function getAdminFinanceTransactions(params?: {
+  month?: string;
+  type?: string;
+  category_id?: number;
+  status?: string;
+  search?: string;
+  page?: number;
+}): Promise<PaginatedResponse<FinanceTransactionData>> {
+  const query = new URLSearchParams();
+  if (params?.month) query.set('month', params.month);
+  if (params?.type) query.set('type', params.type);
+  if (params?.category_id) query.set('category_id', String(params.category_id));
+  if (params?.status) query.set('status', params.status);
+  if (params?.search) query.set('search', params.search);
+  if (params?.page) query.set('page', String(params.page));
+
+  const qs = query.toString();
+  return await apiClient<PaginatedResponse<FinanceTransactionData>>(
+    `/api/admin/finance/transactions${qs ? `?${qs}` : ''}`,
+  );
+}
+
+export async function getAdminFinanceTransaction(id: number): Promise<FinanceTransactionData> {
+  return await apiClient<FinanceTransactionData>(`/api/admin/finance/transactions/${id}`);
+}
+
+export async function createAdminFinanceTransaction(
+  payload: StoreTransactionPayload,
+): Promise<FinanceTransactionData> {
+  return await apiClient<FinanceTransactionData>('/api/admin/finance/transactions', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminFinanceTransaction(
+  id: number,
+  payload: Partial<StoreTransactionPayload>,
+): Promise<FinanceTransactionData> {
+  return await apiClient<FinanceTransactionData>(`/api/admin/finance/transactions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminFinanceTransaction(id: number): Promise<{ message: string }> {
+  return await apiClient<{ message: string }>(`/api/admin/finance/transactions/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function publishAdminFinanceTransaction(id: number): Promise<FinanceTransactionData> {
+  return await apiClient<FinanceTransactionData>(`/api/admin/finance/transactions/${id}/publish`, {
+    method: 'POST',
+  });
+}
+
+export async function correctAdminFinanceTransaction(
+  id: number,
+  payload: CorrectTransactionPayload,
+): Promise<{
+  message: string;
+  reversing_transaction: FinanceTransactionData;
+  replacement_transaction?: FinanceTransactionData;
+}> {
+  return await apiClient<{
+    message: string;
+    reversing_transaction: FinanceTransactionData;
+    replacement_transaction?: FinanceTransactionData;
+  }>(`/api/admin/finance/transactions/${id}/correct`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function uploadAdminFinanceProof(
+  id: number,
+  file: File,
+): Promise<{ message: string; proof_path: string }> {
+  const formData = new FormData();
+  formData.append('proof', file);
+
+  return await apiClient<{ message: string; proof_path: string }>(
+    `/api/admin/finance/transactions/${id}/proof`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  );
+}
+
+export async function deleteAdminFinanceProof(id: number): Promise<{ message: string }> {
+  return await apiClient<{ message: string }>(`/api/admin/finance/transactions/${id}/proof`, {
+    method: 'DELETE',
+  });
+}
+
+export function getAdminFinanceProofUrl(id: number): string {
+  return `/api/admin/finance/transactions/${id}/proof`;
+}
+
+
+
+

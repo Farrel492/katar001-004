@@ -53,5 +53,20 @@ class AppServiceProvider extends ServiceProvider
                 ->by($request->ip())
                 ->response($tooMany);
         });
+
+        // Pengiriman aspirasi publik: 3/jam dan 10/hari per IP
+        RateLimiter::for('public-aspiration-submit', function (Request $request) use ($tooMany) {
+            return [
+                Limit::perHour(3)->by($request->ip())->response($tooMany),
+                Limit::perDay(10)->by($request->ip())->response($tooMany),
+            ];
+        });
+
+        // Pelacakan aspirasi publik: 20/menit per IP
+        RateLimiter::for('public-aspiration-track', function (Request $request) use ($tooMany) {
+            return Limit::perMinute(20)
+                ->by($request->ip())
+                ->response($tooMany);
+        });
     }
 }

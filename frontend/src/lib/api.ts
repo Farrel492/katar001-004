@@ -865,6 +865,7 @@ export async function apiClient<T>(endpoint: string, options: RequestInit = {}):
     total_income: number;
     total_expense: number;
     balance: number;
+    last_published_at: string | null;
     year: number;
     total_income_year: number;
     total_expense_year: number;
@@ -1089,6 +1090,41 @@ export async function apiClient<T>(endpoint: string, options: RequestInit = {}):
 
   export function getAdminFinanceProofUrl(id: number): string {
     return `/api/admin/finance/transactions/${id}/proof`;
+  }
+
+  /* ============================================================================
+   * Dashboard Admin
+   * ============================================================================ */
+
+  export interface AdminDashboardData {
+    attention: {
+      aspirations_new: number;
+      events_draft: number;
+      albums_draft: number;
+      finance_draft: number;
+    };
+    upcoming_events: Array<{
+      id: number;
+      title: string;
+      starts_at: string;
+      status: 'draft' | 'published';
+    }>;
+    finance: {
+      balance: number;
+      income_month: number;
+      expense_month: number;
+      last_published_at: string | null;
+    };
+    recent_activity: Array<{
+      action: string;
+      label_id: string;
+      actor_name: string;
+      created_at: string | null;
+    }>;
+  }
+
+  export async function getAdminDashboard(): Promise<AdminDashboardData> {
+    return await apiClient<AdminDashboardData>('/api/admin/dashboard');
   }
 
 

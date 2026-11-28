@@ -22,23 +22,23 @@ export function ErrorState({
     <div
       role="alert"
       className={cn(
-        'flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl bg-rose-950/20 border border-rose-900/40 text-[#E6ECF8]',
+        'flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-[var(--radius-lg)] bg-rose-950/20 border border-rose-900/40 text-[var(--text-main)]',
         className,
       )}
       {...props}
     >
-      <div className="w-14 h-14 rounded-2xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400 mb-4">
-        <AlertCircle className="w-7 h-7" aria-hidden="true" />
-      </div>
-      <h3 className="text-lg font-bold text-rose-200">{title}</h3>
-      <p className="mt-1.5 text-sm text-[#9AA8C4] max-w-md">{message}</p>
-      {onRetry && (
-        <div className="mt-6">
-          <Button variant="secondary" onClick={onRetry}>
-            {retryLabel}
-          </Button>
+        <div className="w-12 h-12 rounded-[var(--radius-sm)] bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400 mb-4">
+          <AlertCircle className="w-7 h-7" aria-hidden="true" />
         </div>
-      )}
-    </div>
-  )
+        <h3 className="text-lg font-bold text-rose-200">{title}</h3>
+        <p className="mt-1.5 text-sm text-[#9AA8C4] max-w-md">{message}</p>
+        {onRetry && (
+          <div className="mt-6">
+            <Button variant="secondary" onClick={onRetry}>
+              {retryLabel}
+            </Button>
+          </div>
+        )}
+      </div>
+      )
 }

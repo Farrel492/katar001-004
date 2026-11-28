@@ -657,625 +657,625 @@ export default function AdminFinancePage() {
         />
       ) : (
         <div className="space-y-4">
-          <div className="bg-[#0C1427] border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800/80 bg-[#080E1E] text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Tanggal</th>
-                    <th className="py-3.5 px-4">Jenis & Kategori</th>
-                    <th className="py-3.5 px-4">Keterangan & Pihak</th>
-                    <th className="py-3.5 px-4 text-right">Nominal (Rp)</th>
-                    <th className="py-3.5 px-4 text-center">Nota</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-sm">
-                  {transactions.map((tx) => {
-                    const isIncome = tx.type === 'income'
-                    const isCorrection = tx.corrects_id !== null
-                    return (
-                      <tr key={tx.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-4 px-4 whitespace-nowrap text-xs text-[#9AA8C4] font-medium">
-                          {formatDate(tx.transaction_date)}
-                        </td>
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isIncome
-                                ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
-                                : 'bg-rose-950/60 text-rose-400 border border-rose-800/60'
-                                }`}
-                            >
-                              {isIncome ? 'Masuk' : 'Keluar'}
-                            </span>
-                            <span className="text-xs text-[#E6ECF8] font-medium">
-                              {tx.category ? tx.category.name : '-'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 max-w-xs">
-                          <p className="font-semibold text-[#E6ECF8] truncate">{tx.description}</p>
-                          {tx.counterparty && (
-                            <p className="text-[11px] text-[#9AA8C4] truncate">
-                              Pihak: {tx.counterparty}{' '}
-                              {tx.counterparty_public ? (
-                                <span className="text-cyan-400 font-medium">(Tampil di publik)</span>
-                              ) : (
-                                <span className="text-slate-500">(Internal)</span>
-                              )}
-                            </p>
-                          )}
-                          {isCorrection && tx.correction_reason && (
-                            <p className="text-[11px] text-amber-400/90 italic truncate">
-                              Koreksi: {tx.correction_reason}
-                            </p>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 text-right whitespace-nowrap font-mono font-bold">
-                          <span className={isIncome ? 'text-emerald-400' : 'text-rose-400'}>
-                            {isIncome ? '+' : '-'} {formatRupiah(tx.amount)}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-center whitespace-nowrap">
-                          {tx.proof_path ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveProofTx(tx)
-                                setIsProofModalOpen(true)
-                              }}
-                              className="inline-flex items-center gap-1 text-xs text-[#22D3EE] hover:underline cursor-pointer"
-                              title="Lihat bukti nota privat"
-                            >
-                              <Receipt className="w-4 h-4" />
-                              Ada Nota
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveProofTx(tx)
-                                setIsProofModalOpen(true)
-                              }}
-                              className="text-xs text-slate-500 hover:text-[#22D3EE] cursor-pointer"
-                              title="Unggah bukti nota"
-                            >
-                              + Nota
-                            </button>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          {isCorrection ? (
-                            <Badge variant="warning">Koreksi</Badge>
-                          ) : tx.status === 'published' ? (
-                            <Badge variant="published">Terbit</Badge>
-                          ) : (
-                            <Badge variant="draft">Draft</Badge>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* Tombol Ubah: langsung edit data transaksi ini */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenEditTx(tx)}
-                              className="text-[#9AA8C4] hover:text-[#22D3EE] min-h-[38px] px-2"
-                              title="Ubah transaksi ini"
-                              aria-label="Ubah transaksi ini"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-
-                            {/* Tombol Publikasi / Tarik Kembali ke Draf */}
-                            {tx.status === 'draft' ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setConfirmPublishId(tx.id)}
-                                className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 min-h-[38px] px-2"
-                                title="Terbitkan transaksi"
-                                aria-label="Terbitkan transaksi"
+            <div className="bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-[var(--radius-lg)] overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800/80 bg-[#080E1E] text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Tanggal</th>
+                      <th className="py-3.5 px-4">Jenis & Kategori</th>
+                      <th className="py-3.5 px-4">Keterangan & Pihak</th>
+                      <th className="py-3.5 px-4 text-right">Nominal (Rp)</th>
+                      <th className="py-3.5 px-4 text-center">Nota</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-4 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-sm">
+                    {transactions.map((tx) => {
+                      const isIncome = tx.type === 'income'
+                      const isCorrection = tx.corrects_id !== null
+                      return (
+                        <tr key={tx.id} className="hover:bg-slate-800/20 transition-colors">
+                          <td className="py-4 px-4 whitespace-nowrap text-xs text-[#9AA8C4] font-medium">
+                            {formatDate(tx.transaction_date)}
+                          </td>
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isIncome
+                                  ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
+                                  : 'bg-rose-950/60 text-rose-400 border border-rose-800/60'
+                                  }`}
                               >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setConfirmUnpublishId(tx.id)}
-                                className="text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 min-h-[38px] px-2"
-                                title="Tarik kembali ke draf"
-                                aria-label="Tarik kembali ke draf"
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </Button>
+                                {isIncome ? 'Masuk' : 'Keluar'}
+                              </span>
+                              <span className="text-xs text-[#E6ECF8] font-medium">
+                                {tx.category ? tx.category.name : '-'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 max-w-xs">
+                            <p className="font-semibold text-[#E6ECF8] truncate">{tx.description}</p>
+                            {tx.counterparty && (
+                              <p className="text-[11px] text-[#9AA8C4] truncate">
+                                Pihak: {tx.counterparty}{' '}
+                                {tx.counterparty_public ? (
+                                  <span className="text-cyan-400 font-medium">(Tampil di publik)</span>
+                                ) : (
+                                  <span className="text-slate-500">(Internal)</span>
+                                )}
+                              </p>
                             )}
+                            {isCorrection && tx.correction_reason && (
+                              <p className="text-[11px] text-amber-400/90 italic truncate">
+                                Koreksi: {tx.correction_reason}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-right whitespace-nowrap font-mono font-bold">
+                            <span className={isIncome ? 'text-emerald-400' : 'text-rose-400'}>
+                              {isIncome ? '+' : '-'} {formatRupiah(tx.amount)}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 text-center whitespace-nowrap">
+                            {tx.proof_path ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveProofTx(tx)
+                                  setIsProofModalOpen(true)
+                                }}
+                                className="inline-flex items-center gap-1 text-xs text-[#22D3EE] hover:underline cursor-pointer"
+                                title="Lihat bukti nota privat"
+                              >
+                                <Receipt className="w-4 h-4" />
+                                Ada Nota
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveProofTx(tx)
+                                  setIsProofModalOpen(true)
+                                }}
+                                className="text-xs text-slate-500 hover:text-[#22D3EE] cursor-pointer"
+                                title="Unggah bukti nota"
+                              >
+                                + Nota
+                              </button>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            {isCorrection ? (
+                              <Badge variant="warning">Koreksi</Badge>
+                            ) : tx.status === 'published' ? (
+                              <Badge variant="published">Terbit</Badge>
+                            ) : (
+                              <Badge variant="draft">Draft</Badge>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Tombol Ubah: langsung edit data transaksi ini */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenEditTx(tx)}
+                                className="text-[#9AA8C4] hover:text-[#22D3EE] min-h-[44px] min-w-[44px] px-2"
+                                title="Ubah transaksi ini"
+                                aria-label="Ubah transaksi ini"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
 
-                            {/* Tombol Hapus: tersedia untuk semua transaksi */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setConfirmDeleteId(tx.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-950/30 min-h-[38px] px-2"
-                              title="Hapus transaksi"
-                              aria-label="Hapus transaksi"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                              {/* Tombol Publikasi / Tarik Kembali ke Draf */}
+                              {tx.status === 'draft' ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setConfirmPublishId(tx.id)}
+                                  className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 min-h-[44px] min-w-[44px] px-2"
+                                  title="Terbitkan transaksi"
+                                  aria-label="Terbitkan transaksi"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setConfirmUnpublishId(tx.id)}
+                                  className="text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 min-h-[44px] min-w-[44px] px-2"
+                                  title="Tarik kembali ke draf"
+                                  aria-label="Tarik kembali ke draf"
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                </Button>
+                              )}
 
-          {/* Paginasi */}
-          {lastPage > 1 && (
-            <div className="flex items-center justify-between p-3 bg-[#0C1427] border border-slate-800/80 rounded-xl text-xs text-[#9AA8C4]">
-              <span>
-                Menampilkan halaman {currentPage} dari {lastPage} (Total {totalItems} transaksi)
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="min-h-[40px]"
-                >
-                  Sebelumnya
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={currentPage >= lastPage}
-                  onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
-                  className="min-h-[40px]"
-                >
-                  Selanjutnya
-                </Button>
+                              {/* Tombol Hapus: tersedia untuk semua transaksi */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmDeleteId(tx.id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-950/30 min-h-[44px] min-w-[44px] px-2"
+                                title="Hapus transaksi"
+                                aria-label="Hapus transaksi"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-          )}
-        </div>
-      )
-      }
 
-      {/* Modal 1: Tambah / Ubah Transaksi */}
-      <Modal
-        isOpen={isTxModalOpen}
-        onClose={() => setIsTxModalOpen(false)}
-        title={editingTx ? 'Ubah Transaksi' : 'Catat Transaksi Kas Baru'}
-        size="lg"
-      >
-        <div className="space-y-4">
-          {/* Radio Jenis Transaksi */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setTxType('income')
-                const first = categories.find((c) => c.type === 'income' && c.is_active)
-                if (first) setTxCategoryId(String(first.id))
-              }}
-              className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${txType === 'income'
-                ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
-                : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
-                }`}
-            >
-              <ArrowUpRight className="w-4 h-4 text-emerald-400" />
-              Pemasukan (Kas Masuk)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setTxType('expense')
-                const first = categories.find((c) => c.type === 'expense' && c.is_active)
-                if (first) setTxCategoryId(String(first.id))
-              }}
-              className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${txType === 'expense'
-                ? 'bg-rose-950/40 border-rose-500 text-rose-300'
-                : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
-                }`}
-            >
-              <ArrowDownRight className="w-4 h-4 text-rose-400" />
-              Pengeluaran (Kas Keluar)
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Kategori */}
-            <FormField htmlFor="tx-category" label="Kategori Transaksi" required>
-              <Select
-                value={txCategoryId}
-                onChange={(e) => setTxCategoryId(e.target.value)}
-                options={categories
-                  .filter((c) => c.type === txType && c.is_active)
-                  .map((c) => ({ value: String(c.id), label: c.name }))}
-              />
-            </FormField>
-
-            {/* Nominal (Rupiah integer) */}
-            <FormField htmlFor="tx-amount" label="Nominal (Rupiah)" required helperText="Bilangan bulat tanpa desimal">
-              <Input
-                id="tx-amount"
-                type="text"
-                value={txAmount ? formatRupiah(txAmount).replace('Rp ', '') : ''}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^\d]/g, '')
-                  setTxAmount(raw)
-                }}
-                placeholder="Contoh: 150.000"
-                required
-              />
-            </FormField>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Tanggal */}
-            <FormField htmlFor="tx-date" label="Tanggal Transaksi" required>
-              <Input
-                id="tx-date"
-                type="date"
-                value={txDate}
-                onChange={(e) => setTxDate(e.target.value)}
-                required
-              />
-            </FormField>
-
-            {/* Pihak Terkait */}
-            <FormField htmlFor="tx-counterparty" label="Pihak Terkait (Warga / Toko / Rekanan)">
-              <Input
-                id="tx-counterparty"
-                type="text"
-                value={txCounterparty}
-                onChange={(e) => setTxCounterparty(e.target.value)}
-                placeholder="Contoh: Toko Bangunan Berkah / Bpk. Joko"
-                maxLength={80}
-              />
-            </FormField>
-          </div>
-
-          {/* Checkbox Publikasi Pihak */}
-          {txCounterparty && (
-            <label className="flex items-center gap-2.5 p-3 bg-[#060B18] border border-slate-800 rounded-xl cursor-pointer text-xs text-[#9AA8C4]">
-              <input
-                type="checkbox"
-                checked={txCounterpartyPublic}
-                onChange={(e) => setTxCounterpartyPublic(e.target.checked)}
-                className="w-4 h-4 rounded text-[#2F6BFF] bg-slate-800 border-slate-700"
-              />
-              <span>Tampilkan nama pihak &quot;{txCounterparty}&quot; pada laporan transparansi warga.</span>
-            </label>
-          )}
-
-          {/* Keterangan */}
-          <FormField htmlFor="tx-desc" label="Keterangan Rinci Transaksi" required helperText="Maksimal 200 karakter">
-            <Input
-              id="tx-desc"
-              type="text"
-              value={txDescription}
-              onChange={(e) => setTxDescription(e.target.value)}
-              placeholder="Contoh: Pembelian 3 roll kabel & stopkontak untuk perbaikan pos RT"
-              maxLength={200}
-              required
-            />
-          </FormField>
-
-          {/* Tombol Simpan */}
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-800">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsTxModalOpen(false)}
-              disabled={txSubmitting}
-              className="min-h-[44px]"
-            >
-              Batal
-            </Button>
-
-            {!editingTx && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => handleSaveTx(true)}
-                disabled={txSubmitting}
-                className="min-h-[44px] bg-emerald-600 hover:bg-emerald-500"
-              >
-                {txSubmitting ? 'Memproses...' : 'Simpan & Terbitkan Langsung'}
-              </Button>
-            )}
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleSaveTx(false)}
-              disabled={txSubmitting}
-              className="min-h-[44px]"
-            >
-              {txSubmitting ? 'Menyimpan...' : editingTx ? 'Simpan Perubahan' : 'Simpan sebagai Draft'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal 2: Kelola Kategori */}
-      <Modal
-        isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-        title="Kelola Kategori Keuangan"
-        size="md"
-      >
-        <div className="space-y-6">
-          {/* Form Tambah Kategori */}
-          <div className="p-4 bg-[#060B18] border border-slate-800 rounded-xl space-y-3">
-            <span className="text-xs font-bold text-[#E6ECF8] uppercase tracking-wider block">
-              Tambah Kategori Baru
-            </span>
-            <div className="flex gap-2">
-              <div className="w-1/3">
-                <Select
-                  value={newCatType}
-                  onChange={(e) => setNewCatType(e.target.value as FinanceType)}
-                  options={[
-                    { value: 'income', label: 'Pemasukan' },
-                    { value: 'expense', label: 'Pengeluaran' },
-                  ]}
-                />
-              </div>
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  placeholder="Nama kategori..."
-                  maxLength={80}
-                />
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleAddCategory}
-                disabled={catSubmitting}
-                className="min-h-[44px] shrink-0"
-              >
-                {catSubmitting ? <Spinner className="w-4 h-4" /> : 'Tambah'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Daftar Kategori */}
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            <span className="text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider block">
-              Daftar Kategori Tersedia:
-            </span>
-            {categories.map((cat) => (
-              <div
-                key={cat.id}
-                className="flex items-center justify-between p-3 bg-[#060B18] border border-slate-800/80 rounded-xl text-xs"
-              >
+            {/* Paginasi */}
+            {lastPage > 1 && (
+              <div className="flex items-center justify-between p-3 bg-[#0C1427] border border-slate-800/80 rounded-xl text-xs text-[#9AA8C4]">
+                <span>
+                  Menampilkan halaman {currentPage} dari {lastPage} (Total {totalItems} transaksi)
+                </span>
                 <div className="flex items-center gap-2">
-                  <span
-                    className={`font-semibold px-2 py-0.5 rounded text-[10px] uppercase ${cat.type === 'income' ? 'bg-emerald-950 text-emerald-400' : 'bg-rose-950 text-rose-400'
-                      }`}
-                  >
-                    {cat.type === 'income' ? 'Masuk' : 'Keluar'}
-                  </span>
-                  <span className={`font-medium ${cat.is_active ? 'text-[#E6ECF8]' : 'text-slate-500 line-through'}`}>
-                    {cat.name}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleCategoryActive(cat)}
-                    className={`text-xs px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${cat.is_active
-                      ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
-                      : 'border-emerald-800 text-emerald-400 hover:bg-emerald-950/40'
-                      }`}
-                  >
-                    {cat.is_active ? 'Nonaktifkan' : 'Aktifkan'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteCat(cat)}
-                    className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-rose-900/50"
-                    title={`Hapus kategori ${cat.name}`}
-                    aria-label={`Hapus kategori ${cat.name}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal 4: Pengaturan Saldo Awal */}
-      <Modal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        title="Pengaturan Saldo Awal Kas"
-        size="md"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-[#9AA8C4] leading-relaxed">
-            Saldo awal adalah angka saldo pembuka buku kas sebelum transaksi dicatat. Seluruh admin dan superadmin memiliki akses penuh untuk memperbarui nilai ini.
-          </p>
-
-          <FormField htmlFor="opening-balance" label="Nominal Saldo Awal (Rupiah)" required>
-            <Input
-              id="opening-balance"
-              type="text"
-              value={formatRupiah(openingBalanceInput).replace('Rp ', '')}
-              onChange={(e) => setOpeningBalanceInput(e.target.value.replace(/[^\d-]/g, ''))}
-              placeholder="Contoh: 5.000.000"
-              required
-            />
-          </FormField>
-
-          <FormField htmlFor="opening-date" label="Tanggal Pembukuan Saldo Awal" required>
-            <Input
-              id="opening-date"
-              type="date"
-              value={openingDateInput}
-              onChange={(e) => setOpeningDateInput(e.target.value)}
-              required
-            />
-          </FormField>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsSettingsModalOpen(false)}
-              disabled={settingsSubmitting}
-              className="min-h-[44px]"
-            >
-              Batal
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSaveSettings}
-              disabled={settingsSubmitting}
-              className="min-h-[44px]"
-            >
-              {settingsSubmitting ? 'Menyimpan...' : 'Simpan Saldo Awal'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal 5: Pratinjau / Upload Bukti Nota */}
-      <Modal
-        isOpen={isProofModalOpen}
-        onClose={() => {
-          setIsProofModalOpen(false)
-          setActiveProofTx(null)
-          setProofFile(null)
-        }}
-        title="Bukti Nota / Kwitansi Transaksi"
-        size="md"
-      >
-        {activeProofTx && (
-          <div className="space-y-4">
-            <div className="text-xs text-[#9AA8C4]">
-              Transaksi: <strong>{activeProofTx.description}</strong> ({formatRupiah(activeProofTx.amount)})
-            </div>
-
-            {/* Jika Bukti Nota Sudah Ada */}
-            {activeProofTx.proof_path ? (
-              <div className="space-y-3">
-                <div className="p-2 bg-[#060B18] border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center max-h-80">
-                  <img
-                    src={getAdminFinanceProofUrl(activeProofTx.id)}
-                    alt="Bukti Nota Kas"
-                    className="max-h-72 object-contain rounded-lg"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <a
-                    href={getAdminFinanceProofUrl(activeProofTx.id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-[#22D3EE] hover:underline"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Buka Ukuran Penuh
-                  </a>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDeleteProof(activeProofTx.id)}
-                    disabled={proofSubmitting}
-                    className="text-red-400 hover:text-red-300 min-h-[40px]"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="min-h-[40px]"
                   >
-                    Hapus Bukti
+                    Sebelumnya
                   </Button>
-                </div>
-              </div>
-            ) : (
-              /* Unggah Bukti Baru */
-              <div className="space-y-3">
-                <FormField htmlFor="proof-upload" label="Pilih Berkas Bukti (JPG, PNG, atau WebP, maks 2MB)">
-                  <Input
-                    id="proof-upload"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) setProofFile(e.target.files[0])
-                    }}
-                  />
-                </FormField>
-                <div className="flex justify-end pt-2">
                   <Button
-                    variant="primary"
+                    variant="ghost"
                     size="sm"
-                    onClick={handleUploadProof}
-                    disabled={!proofFile || proofSubmitting}
-                    className="min-h-[44px]"
+                    disabled={currentPage >= lastPage}
+                    onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+                    className="min-h-[40px]"
                   >
-                    {proofSubmitting ? 'Mengunggah...' : 'Unggah Bukti Nota'}
+                    Selanjutnya
                   </Button>
                 </div>
               </div>
             )}
           </div>
-        )}
-      </Modal>
-      {/* Dialog Konfirmasi Terbitkan Transaksi */}
-      <ConfirmDialog
-        isOpen={confirmPublishId !== null}
-        onClose={() => setConfirmPublishId(null)}
-        onConfirm={handleConfirmPublish}
-        title="Terbitkan Transaksi Kas"
-        description="Apakah Anda yakin ingin menerbitkan transaksi ini? Transaksi yang terbit akan tampil di buku kas transparansi warga dan mempengaruhi saldo publik."
-        confirmLabel={actionLoading ? 'Menerbitkan...' : 'Ya, Terbitkan'}
-        variant="primary"
-      />
+          )
+      }
 
-      {/* Dialog Konfirmasi Tarik Kembali ke Draf */}
-      <ConfirmDialog
-        isOpen={confirmUnpublishId !== null}
-        onClose={() => setConfirmUnpublishId(null)}
-        onConfirm={handleConfirmUnpublish}
-        title="Tarik Kembali ke Draf"
-        description="Apakah Anda yakin ingin menarik kembali transaksi ini ke status draf? Transaksi berstatus draf tidak akan tampil di buku kas publik maupun mempengaruhi saldo publik warga."
-        confirmLabel={actionLoading ? 'Menarik...' : 'Ya, Tarik ke Draf'}
-        variant="primary"
-      />
+          {/* Modal 1: Tambah / Ubah Transaksi */}
+          <Modal
+            isOpen={isTxModalOpen}
+            onClose={() => setIsTxModalOpen(false)}
+            title={editingTx ? 'Ubah Transaksi' : 'Catat Transaksi Kas Baru'}
+            size="lg"
+          >
+            <div className="space-y-4">
+              {/* Radio Jenis Transaksi */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTxType('income')
+                    const first = categories.find((c) => c.type === 'income' && c.is_active)
+                    if (first) setTxCategoryId(String(first.id))
+                  }}
+                  className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${txType === 'income'
+                    ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                    : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                >
+                  <ArrowUpRight className="w-4 h-4 text-emerald-400" />
+                  Pemasukan (Kas Masuk)
+                </button>
 
-      {/* Dialog Konfirmasi Hapus Transaksi */}
-      <ConfirmDialog
-        isOpen={confirmDeleteId !== null}
-        onClose={() => setConfirmDeleteId(null)}
-        onConfirm={handleConfirmDelete}
-        title="Hapus Transaksi Kas"
-        description="Apakah Anda yakin ingin menghapus transaksi ini? Data akan dipindahkan ke arsip sementara (soft-delete)."
-        confirmLabel={actionLoading ? 'Menghapus...' : 'Ya, Hapus'}
-        variant="danger"
-      />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTxType('expense')
+                    const first = categories.find((c) => c.type === 'expense' && c.is_active)
+                    if (first) setTxCategoryId(String(first.id))
+                  }}
+                  className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${txType === 'expense'
+                    ? 'bg-rose-950/40 border-rose-500 text-rose-300'
+                    : 'bg-[#060B18] border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                >
+                  <ArrowDownRight className="w-4 h-4 text-rose-400" />
+                  Pengeluaran (Kas Keluar)
+                </button>
+              </div>
 
-      {/* Dialog Konfirmasi Hapus Kategori */}
-      <ConfirmDialog
-        isOpen={confirmDeleteCat !== null}
-        onClose={() => setConfirmDeleteCat(null)}
-        onConfirm={handleDeleteCategory}
-        title="Hapus Kategori Keuangan"
-        description={`Apakah Anda yakin ingin menghapus kategori "${confirmDeleteCat?.name}"? Tindakan ini tidak dapat dibatalkan. Kategori hanya dapat dihapus jika belum pernah digunakan pada transaksi kas.`}
-        confirmLabel={deleteCatLoading ? 'Menghapus...' : 'Ya, Hapus Kategori'}
-        variant="danger"
-      />
-    </div>
-  )
-}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Kategori */}
+                <FormField htmlFor="tx-category" label="Kategori Transaksi" required>
+                  <Select
+                    value={txCategoryId}
+                    onChange={(e) => setTxCategoryId(e.target.value)}
+                    options={categories
+                      .filter((c) => c.type === txType && c.is_active)
+                      .map((c) => ({ value: String(c.id), label: c.name }))}
+                  />
+                </FormField>
+
+                {/* Nominal (Rupiah integer) */}
+                <FormField htmlFor="tx-amount" label="Nominal (Rupiah)" required helperText="Bilangan bulat tanpa desimal">
+                  <Input
+                    id="tx-amount"
+                    type="text"
+                    value={txAmount ? formatRupiah(txAmount).replace('Rp ', '') : ''}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, '')
+                      setTxAmount(raw)
+                    }}
+                    placeholder="Contoh: 150.000"
+                    required
+                  />
+                </FormField>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Tanggal */}
+                <FormField htmlFor="tx-date" label="Tanggal Transaksi" required>
+                  <Input
+                    id="tx-date"
+                    type="date"
+                    value={txDate}
+                    onChange={(e) => setTxDate(e.target.value)}
+                    required
+                  />
+                </FormField>
+
+                {/* Pihak Terkait */}
+                <FormField htmlFor="tx-counterparty" label="Pihak Terkait (Warga / Toko / Rekanan)">
+                  <Input
+                    id="tx-counterparty"
+                    type="text"
+                    value={txCounterparty}
+                    onChange={(e) => setTxCounterparty(e.target.value)}
+                    placeholder="Contoh: Toko Bangunan Berkah / Bpk. Joko"
+                    maxLength={80}
+                  />
+                </FormField>
+              </div>
+
+              {/* Checkbox Publikasi Pihak */}
+              {txCounterparty && (
+                <label className="flex items-center gap-2.5 p-3 bg-[#060B18] border border-slate-800 rounded-xl cursor-pointer text-xs text-[#9AA8C4]">
+                  <input
+                    type="checkbox"
+                    checked={txCounterpartyPublic}
+                    onChange={(e) => setTxCounterpartyPublic(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#2F6BFF] bg-slate-800 border-slate-700"
+                  />
+                  <span>Tampilkan nama pihak &quot;{txCounterparty}&quot; pada laporan transparansi warga.</span>
+                </label>
+              )}
+
+              {/* Keterangan */}
+              <FormField htmlFor="tx-desc" label="Keterangan Rinci Transaksi" required helperText="Maksimal 200 karakter">
+                <Input
+                  id="tx-desc"
+                  type="text"
+                  value={txDescription}
+                  onChange={(e) => setTxDescription(e.target.value)}
+                  placeholder="Contoh: Pembelian 3 roll kabel & stopkontak untuk perbaikan pos RT"
+                  maxLength={200}
+                  required
+                />
+              </FormField>
+
+              {/* Tombol Simpan */}
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsTxModalOpen(false)}
+                  disabled={txSubmitting}
+                  className="min-h-[44px]"
+                >
+                  Batal
+                </Button>
+
+                {!editingTx && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleSaveTx(true)}
+                    disabled={txSubmitting}
+                    className="min-h-[44px] bg-emerald-600 hover:bg-emerald-500"
+                  >
+                    {txSubmitting ? 'Memproses...' : 'Simpan & Terbitkan Langsung'}
+                  </Button>
+                )}
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleSaveTx(false)}
+                  disabled={txSubmitting}
+                  className="min-h-[44px]"
+                >
+                  {txSubmitting ? 'Menyimpan...' : editingTx ? 'Simpan Perubahan' : 'Simpan sebagai Draft'}
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Modal 2: Kelola Kategori */}
+          <Modal
+            isOpen={isCategoryModalOpen}
+            onClose={() => setIsCategoryModalOpen(false)}
+            title="Kelola Kategori Keuangan"
+            size="md"
+          >
+            <div className="space-y-6">
+              {/* Form Tambah Kategori */}
+              <div className="p-4 bg-[#060B18] border border-slate-800 rounded-xl space-y-3">
+                <span className="text-xs font-bold text-[#E6ECF8] uppercase tracking-wider block">
+                  Tambah Kategori Baru
+                </span>
+                <div className="flex gap-2">
+                  <div className="w-1/3">
+                    <Select
+                      value={newCatType}
+                      onChange={(e) => setNewCatType(e.target.value as FinanceType)}
+                      options={[
+                        { value: 'income', label: 'Pemasukan' },
+                        { value: 'expense', label: 'Pengeluaran' },
+                      ]}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      placeholder="Nama kategori..."
+                      maxLength={80}
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleAddCategory}
+                    disabled={catSubmitting}
+                    className="min-h-[44px] shrink-0"
+                  >
+                    {catSubmitting ? <Spinner className="w-4 h-4" /> : 'Tambah'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Daftar Kategori */}
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                <span className="text-xs font-semibold text-[#9AA8C4] uppercase tracking-wider block">
+                  Daftar Kategori Tersedia:
+                </span>
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between p-3 bg-[#060B18] border border-slate-800/80 rounded-xl text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`font-semibold px-2 py-0.5 rounded text-[10px] uppercase ${cat.type === 'income' ? 'bg-emerald-950 text-emerald-400' : 'bg-rose-950 text-rose-400'
+                          }`}
+                      >
+                        {cat.type === 'income' ? 'Masuk' : 'Keluar'}
+                      </span>
+                      <span className={`font-medium ${cat.is_active ? 'text-[#E6ECF8]' : 'text-slate-500 line-through'}`}>
+                        {cat.name}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleCategoryActive(cat)}
+                        className={`text-xs px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${cat.is_active
+                          ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                          : 'border-emerald-800 text-emerald-400 hover:bg-emerald-950/40'
+                          }`}
+                      >
+                        {cat.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteCat(cat)}
+                        className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-rose-900/50"
+                        title={`Hapus kategori ${cat.name}`}
+                        aria-label={`Hapus kategori ${cat.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Modal>
+
+          {/* Modal 4: Pengaturan Saldo Awal */}
+          <Modal
+            isOpen={isSettingsModalOpen}
+            onClose={() => setIsSettingsModalOpen(false)}
+            title="Pengaturan Saldo Awal Kas"
+            size="md"
+          >
+            <div className="space-y-4">
+              <p className="text-xs text-[#9AA8C4] leading-relaxed">
+                Saldo awal adalah angka saldo pembuka buku kas sebelum transaksi dicatat. Seluruh admin dan superadmin memiliki akses penuh untuk memperbarui nilai ini.
+              </p>
+
+              <FormField htmlFor="opening-balance" label="Nominal Saldo Awal (Rupiah)" required>
+                <Input
+                  id="opening-balance"
+                  type="text"
+                  value={formatRupiah(openingBalanceInput).replace('Rp ', '')}
+                  onChange={(e) => setOpeningBalanceInput(e.target.value.replace(/[^\d-]/g, ''))}
+                  placeholder="Contoh: 5.000.000"
+                  required
+                />
+              </FormField>
+
+              <FormField htmlFor="opening-date" label="Tanggal Pembukuan Saldo Awal" required>
+                <Input
+                  id="opening-date"
+                  type="date"
+                  value={openingDateInput}
+                  onChange={(e) => setOpeningDateInput(e.target.value)}
+                  required
+                />
+              </FormField>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsSettingsModalOpen(false)}
+                  disabled={settingsSubmitting}
+                  className="min-h-[44px]"
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveSettings}
+                  disabled={settingsSubmitting}
+                  className="min-h-[44px]"
+                >
+                  {settingsSubmitting ? 'Menyimpan...' : 'Simpan Saldo Awal'}
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Modal 5: Pratinjau / Upload Bukti Nota */}
+          <Modal
+            isOpen={isProofModalOpen}
+            onClose={() => {
+              setIsProofModalOpen(false)
+              setActiveProofTx(null)
+              setProofFile(null)
+            }}
+            title="Bukti Nota / Kwitansi Transaksi"
+            size="md"
+          >
+            {activeProofTx && (
+              <div className="space-y-4">
+                <div className="text-xs text-[#9AA8C4]">
+                  Transaksi: <strong>{activeProofTx.description}</strong> ({formatRupiah(activeProofTx.amount)})
+                </div>
+
+                {/* Jika Bukti Nota Sudah Ada */}
+                {activeProofTx.proof_path ? (
+                  <div className="space-y-3">
+                    <div className="p-2 bg-[#060B18] border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center max-h-80">
+                      <img
+                        src={getAdminFinanceProofUrl(activeProofTx.id)}
+                        alt="Bukti Nota Kas"
+                        className="max-h-72 object-contain rounded-lg"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <a
+                        href={getAdminFinanceProofUrl(activeProofTx.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-[#22D3EE] hover:underline"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Buka Ukuran Penuh
+                      </a>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteProof(activeProofTx.id)}
+                        disabled={proofSubmitting}
+                        className="text-red-400 hover:text-red-300 min-h-[40px]"
+                      >
+                        Hapus Bukti
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Unggah Bukti Baru */
+                  <div className="space-y-3">
+                    <FormField htmlFor="proof-upload" label="Pilih Berkas Bukti (JPG, PNG, atau WebP, maks 2MB)">
+                      <Input
+                        id="proof-upload"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) setProofFile(e.target.files[0])
+                        }}
+                      />
+                    </FormField>
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleUploadProof}
+                        disabled={!proofFile || proofSubmitting}
+                        className="min-h-[44px]"
+                      >
+                        {proofSubmitting ? 'Mengunggah...' : 'Unggah Bukti Nota'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </Modal>
+          {/* Dialog Konfirmasi Terbitkan Transaksi */}
+          <ConfirmDialog
+            isOpen={confirmPublishId !== null}
+            onClose={() => setConfirmPublishId(null)}
+            onConfirm={handleConfirmPublish}
+            title="Terbitkan Transaksi Kas"
+            description="Apakah Anda yakin ingin menerbitkan transaksi ini? Transaksi yang terbit akan tampil di buku kas transparansi warga dan mempengaruhi saldo publik."
+            confirmLabel={actionLoading ? 'Menerbitkan...' : 'Ya, Terbitkan'}
+            variant="primary"
+          />
+
+          {/* Dialog Konfirmasi Tarik Kembali ke Draf */}
+          <ConfirmDialog
+            isOpen={confirmUnpublishId !== null}
+            onClose={() => setConfirmUnpublishId(null)}
+            onConfirm={handleConfirmUnpublish}
+            title="Tarik Kembali ke Draf"
+            description="Apakah Anda yakin ingin menarik kembali transaksi ini ke status draf? Transaksi berstatus draf tidak akan tampil di buku kas publik maupun mempengaruhi saldo publik warga."
+            confirmLabel={actionLoading ? 'Menarik...' : 'Ya, Tarik ke Draf'}
+            variant="primary"
+          />
+
+          {/* Dialog Konfirmasi Hapus Transaksi */}
+          <ConfirmDialog
+            isOpen={confirmDeleteId !== null}
+            onClose={() => setConfirmDeleteId(null)}
+            onConfirm={handleConfirmDelete}
+            title="Hapus Transaksi Kas"
+            description="Apakah Anda yakin ingin menghapus transaksi ini? Data akan dipindahkan ke arsip sementara (soft-delete)."
+            confirmLabel={actionLoading ? 'Menghapus...' : 'Ya, Hapus'}
+            variant="danger"
+          />
+
+          {/* Dialog Konfirmasi Hapus Kategori */}
+          <ConfirmDialog
+            isOpen={confirmDeleteCat !== null}
+            onClose={() => setConfirmDeleteCat(null)}
+            onConfirm={handleDeleteCategory}
+            title="Hapus Kategori Keuangan"
+            description={`Apakah Anda yakin ingin menghapus kategori "${confirmDeleteCat?.name}"? Tindakan ini tidak dapat dibatalkan. Kategori hanya dapat dihapus jika belum pernah digunakan pada transaksi kas.`}
+            confirmLabel={deleteCatLoading ? 'Menghapus...' : 'Ya, Hapus Kategori'}
+            variant="danger"
+          />
+        </div>
+      )
+      }

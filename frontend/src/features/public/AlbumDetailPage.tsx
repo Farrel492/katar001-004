@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Image as ImageIcon, Calendar, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Container, Spinner, EmptyState } from '@/components/ui'
+import { Image as ImageIcon, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Container, Spinner, EmptyState, Button } from '@/components/ui'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { getPublicAlbumDetail, type AlbumData } from '@/lib/api'
 import { formatDate } from '@/lib/format'
@@ -12,9 +12,10 @@ export default function AlbumDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Lightbox State
+  // Lightbox State & Focus Management
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const lightboxRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   useDocumentTitle(album ? album.title : 'Galeri Album')
 
@@ -35,219 +36,259 @@ export default function AlbumDetailPage() {
       })
   }, [slug])
 
-  // Navigasi Keyboard Lightbox (Esc, Left, Right)
+  const closeLightbox = useCallback(() => {
+    setLightboxIndex(null)
+    window.requestAnimationFrame(() => {
+      triggerRef.current?.focus()
+    })
+  }, [])
+
+  // Navigasi Keyboard & Focus Trap Lightbox (Esc, ArrowLeft, ArrowRight, Tab)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (lightboxIndex === null || !album || !album.photos) return
+      const total = album.photos.length
 
       if (e.key === 'Escape') {
-        setLightboxIndex(null)
+        e.preventDefault()
+        closeLightbox()
       } else if (e.key === 'ArrowLeft') {
-        setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : album.photos!.length - 1))
+        e.preventDefault()
+        setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : total - 1))
       } else if (e.key === 'ArrowRight') {
-        setLightboxIndex((prev) => (prev !== null && prev < album.photos!.length - 1 ? prev + 1 : 0))
+        e.preventDefault()
+        setLightboxIndex((prev) => (prev !== null && prev < total - 1 ? prev + 1 : 0))
+      } else if (e.key === 'Tab' && lightboxRef.current) {
+        const focusables = Array.from(
+          lightboxRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+          ),
+        )
+        if (focusables.length === 0) {
+          e.preventDefault()
+          return
+        }
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
       }
     },
-    [lightboxIndex, album]
+    [lightboxIndex, album, closeLightbox],
   )
 
   useEffect(() => {
     if (lightboxIndex !== null) {
       window.addEventListener('keydown', handleKeyDown)
       document.body.style.overflow = 'hidden'
-      lightboxRef.current?.focus()
-    } else {
-      document.body.style.overflow = ''
+      const timer = window.setTimeout(() => {
+        const closeBtn = lightboxRef.current?.querySelector<HTMLButtonElement>('button')
+        closeBtn?.focus()
+      }, 20)
+      return () => {
+        window.clearTimeout(timer)
+        window.removeEventListener('keydown', handleKeyDown)
+        document.body.style.overflow = ''
+      }
     }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = ''
-    }
+    document.body.style.overflow = ''
+    return undefined
   }, [lightboxIndex, handleKeyDown])
 
   if (isLoading) {
     return (
-      <div className="py-32 flex flex-col items-center justify-center gap-3">
-        <Spinner size="lg" />
-        <p className="text-sm text-[#9AA8C4]">Memuat foto dokumentasi...</p>
-      </div>
-    )
+        <div className="py-28 flex flex-col items-center justify-center gap-3">
+          <Spinner size="lg" />
+          <p className="text-sm text-[var(--text-muted)]">Memuat foto dokumentasi...</p>
+        </div>
+        )
   }
 
-  if (errorMsg || !album) {
+        if (errorMsg || !album) {
     return (
-      <div className="py-24">
-        <Container size="narrow">
-          <EmptyState
-            icon={<ImageIcon className="w-10 h-10 text-red-400" />}
-            title="Album Tidak Ditemukan"
-            description={errorMsg || 'Album dokumentasi tidak tersedia atau belum diterbitkan.'}
-            action={
-              <Link
-                to="/dokumentasi"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0C1427] border border-slate-800 text-sm font-semibold text-white hover:border-slate-700 transition"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Kembali ke Daftar Dokumentasi
-              </Link>
+          <div className="py-20">
+            <Container size="narrow">
+              <EmptyState
+                icon={<ImageIcon className="w-8 h-8 text-[var(--danger-text)]" />}
+                title="Album Tidak Ditemukan"
+                description={errorMsg || 'Album dokumentasi tidak tersedia atau belum diterbitkan.'}
+                action={
+                    <Button variant="secondary" to="/dokumentasi">
+                      Kembali ke Daftar Dokumentasi
+              </Button>
             }
           />
-        </Container>
-      </div>
-    )
+          </Container>
+        </div>
+        )
   }
 
-  const photos = album.photos || []
-  const activePhoto = lightboxIndex !== null ? photos[lightboxIndex] : null
+        const photos = album.photos || []
+        const activePhoto = lightboxIndex !== null ? photos[lightboxIndex] : null
 
-  return (
-    <div className="py-12 space-y-10">
-      <Container>
-        {/* Navigasi Balik */}
-        <div className="mb-6">
-          <Link
-            to="/dokumentasi"
-            className="inline-flex items-center gap-2 text-sm text-[#9AA8C4] hover:text-white transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Kembali ke Semua Album
-          </Link>
-        </div>
+        return (
+          <div className="py-10 space-y-8">
+            <Container>
+                  {/* Breadcrumb Sederhana */}
+                  <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-1.5 text-xs sm:text-sm text-[var(--text-muted)]">
+                    <Link to="/" className="hover:text-[var(--accent)] min-h-[44px] inline-flex items-center">
+                      Beranda
+                    </Link>
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--text-faint)]" aria-hidden="true" />
+                  <Link to="/dokumentasi" className="hover:text-[var(--accent)] min-h-[44px] inline-flex items-center">
+                    Dokumentasi
+                  </Link>
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--text-faint)]" aria-hidden="true" />
+                  <span className="text-[var(--text-main)] font-medium truncate max-w-[220px] sm:max-w-sm">
+                    {album.title}
+                  </span>
+                </nav>
 
-        {/* Informasi Album */}
-        <div className="space-y-4 max-w-3xl">
-          <div className="flex items-center gap-2 text-xs text-[#22D3EE] font-medium">
-            <Calendar className="w-3.5 h-3.5" />
-            {album.taken_at ? formatDate(album.taken_at) : 'Tanggal tidak disetel'}
-            <span className="text-slate-600">•</span>
-            <span>{photos.length} Foto Tersimpan</span>
-          </div>
+                {/* Informasi Album */}
+                    <div className="space-y-3 max-w-[70ch]">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)] tabular-nums">
+                        <Calendar className="w-4 h-4 text-[var(--accent)] shrink-0" aria-hidden="true" />
+                        <span>{album.taken_at ? formatDate(album.taken_at) : 'Tanggal tidak tercatat'}</span>
+                        <span aria-hidden="true">&bull;</span>
+                        <span>{photos.length} Foto</span>
+                      </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-            {album.title}
-          </h1>
+                        <h1 className="text-2xl sm:text-4xl font-extrabold text-[var(--text-main)] tracking-tight leading-tight">
+                          {album.title}
+                        </h1>
 
-          {album.description && (
-            <p className="text-base text-[#9AA8C4] leading-relaxed">{album.description}</p>
+                        {album.description && (
+            <p className="text-base sm:text-[17px] text-[var(--text-muted)] leading-relaxed">
+              {album.description}
+            </p>
+                        )}
+
+                        {album.event && (
+                            <p className="text-sm text-[var(--text-muted)] pt-1">
+                              Terkait agenda:{' '}
+                              <Link
+                                to={`/agenda/${album.event.slug}`}
+                                className="text-[var(--accent)] hover:underline font-semibold"
+                              >
+                                {album.event.title}
+                              </Link>
+            </p>
           )}
+                    </div>
 
-          {album.event && (
-            <div className="pt-1">
-              <span className="text-xs text-slate-500">Terkait agenda: </span>
-              <Link
-                to={`/agenda/${album.event.slug}`}
-                className="text-xs text-[#2F6BFF] hover:underline font-semibold"
-              >
-                {album.event.title}
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Galeri Grid Foto */}
-        {photos.length === 0 ? (
-          <div className="py-16 text-center text-[#9AA8C4] bg-[#0C1427]/40 rounded-3xl border border-slate-800">
-            Belum ada foto yang ditampilkan di album ini.
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-6">
-            {photos.map((photo, index) => (
-              <button
-                type="button"
-                key={photo.id}
-                onClick={() => setLightboxIndex(index)}
-                className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-[#2F6BFF] transition-all focus:outline-none focus:ring-2 focus:ring-[#2F6BFF]"
-                aria-label={`Buka foto: ${photo.caption || `Foto ke-${index + 1}`}`}
-              >
-                <img
-                  src={photo.photo_url}
-                  alt={photo.caption || `${album.title} - Foto ${index + 1}`}
-                  width={400}
-                  height={400}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                {photo.caption && (
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-xs text-white line-clamp-1 italic text-left">{photo.caption}</p>
-                  </div>
+                    {/* Galeri Grid Foto */}
+                    {photos.length === 0 ? (
+          <EmptyState
+            className="mt-6"
+            icon={<ImageIcon className="w-7 h-7 text-[var(--text-muted)]" />}
+            title="Belum Ada Foto"
+            description="Belum ada foto yang ditampilkan di album ini."
+          />
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-6">
+                        {photos.map((photo, index) => (
+                          <button
+                            type="button"
+                            key={photo.id}
+                            onClick={(e) => {
+                              triggerRef.current = e.currentTarget
+                              setLightboxIndex(index)
+                            }}
+                            className="group relative aspect-square rounded-[var(--radius-lg)] overflow-hidden bg-[var(--bg-surface)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] cursor-pointer"
+                            aria-label={`Buka foto: ${photo.caption || `Foto ke-${index + 1}`}`}
+                          >
+                            <img
+                              src={photo.photo_url}
+                              alt={photo.caption || `${album.title} - Foto ${index + 1}`}
+                              width={400}
+                              height={400}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                            {photo.caption && (
+                                <div className="absolute inset-x-0 bottom-0 bg-black/80 px-3 py-2 text-left">
+                                  <p className="text-xs text-[var(--text-main)] line-clamp-1">{photo.caption}</p>
+                                </div>
                 )}
-              </button>
-            ))}
-          </div>
-        )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
 
-        {/* ============================================================== */}
-        {/* LIGHTBOX MODAL AKSESIBEL (Esc, Arrow Left/Right)              */}
-        {/* ============================================================== */}
-        {lightboxIndex !== null && activePhoto && (
-          <div
-            ref={lightboxRef}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Penampil Foto Dokumentasi"
-            className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6 outline-none animate-in fade-in duration-200"
-          >
-            {/* Header Lightbox */}
-            <div className="flex items-center justify-between z-10">
-              <span className="text-xs text-[#9AA8C4]">
-                Foto {lightboxIndex + 1} dari {photos.length}
-              </span>
-              <button
-                type="button"
-                onClick={() => setLightboxIndex(null)}
-                className="p-2 rounded-xl bg-slate-900/80 text-white hover:bg-slate-800 transition"
-                aria-label="Tutup penampil foto"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                        {/* Lightbox Aksesibel (Esc, ArrowLeft/Right, Focus Trap, Return Focus, 44px Buttons) */}
+                        {lightboxIndex !== null && activePhoto && (
+                          <div
+                            ref={lightboxRef}
+                            tabIndex={-1}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Penampil Foto Dokumentasi"
+                            className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-4 sm:p-6 outline-none"
+                          >
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-xs sm:text-sm text-[var(--text-muted)] tabular-nums">
+                                    Foto {lightboxIndex + 1} dari {photos.length}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={closeLightbox}
+                                    className="min-w-[44px] min-h-[44px] px-3 inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-strong)] text-sm font-semibold text-[var(--text-main)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+                                    aria-label="Tutup penampil foto"
+                                  >
+                                    <X className="w-5 h-5" aria-hidden="true" />
+                                    <span>Tutup</span>
+                                  </button>
+                                </div>
 
-            {/* Foto Tengah & Tombol Geser */}
-            <div className="relative flex-1 flex items-center justify-center p-2 sm:p-6 min-h-0">
-              <button
-                type="button"
-                onClick={() =>
-                  setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : photos.length - 1))
-                }
-                className="absolute left-2 sm:left-4 z-10 p-3 rounded-2xl bg-black/60 text-white hover:bg-black/80 transition"
-                aria-label="Foto sebelumnya"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
+                                <div className="relative flex-1 flex items-center justify-center p-2 sm:p-6 min-h-0">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : photos.length - 1))
+                                    }
+                                    className="absolute left-2 sm:left-4 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+                                    aria-label="Foto sebelumnya"
+                                  >
+                                    <ChevronLeft className="w-6 h-6" aria-hidden="true" />
+                                  </button>
 
-              <img
-                src={activePhoto.photo_url}
-                alt={activePhoto.caption || `${album.title} - Foto ${lightboxIndex + 1}`}
-                className="max-h-full max-w-full object-contain rounded-xl select-none"
-              />
+                                  <img
+                                    src={activePhoto.photo_url}
+                                    alt={activePhoto.caption || `${album.title} - Foto ${lightboxIndex + 1}`}
+                                    className="max-h-full max-w-full object-contain rounded-[var(--radius-sm)] select-none"
+                                  />
 
-              <button
-                type="button"
-                onClick={() =>
-                  setLightboxIndex((prev) => (prev !== null && prev < photos.length - 1 ? prev + 1 : 0))
-                }
-                className="absolute right-2 sm:right-4 z-10 p-3 rounded-2xl bg-black/60 text-white hover:bg-black/80 transition"
-                aria-label="Foto berikutnya"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </div>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setLightboxIndex((prev) => (prev !== null && prev < photos.length - 1 ? prev + 1 : 0))
+                                    }
+                                    className="absolute right-2 sm:right-4 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+                                    aria-label="Foto berikutnya"
+                                  >
+                                    <ChevronRight className="w-6 h-6" aria-hidden="true" />
+                                  </button>
+                                </div>
 
-            {/* Footer Keterangan Foto */}
-            <div className="text-center py-2 z-10">
-              {activePhoto.caption ? (
-                <p className="text-sm text-white max-w-xl mx-auto px-4 py-1.5 rounded-xl bg-black/60 inline-block">
-                  {activePhoto.caption}
-                </p>
-              ) : (
-                <p className="text-xs text-slate-500">Gunakan panah kiri/kanan pada keyboard untuk navigasi.</p>
+                                  <div className="text-center py-2">
+                                    {activePhoto.caption ? (
+                                        <p className="text-sm text-[var(--text-main)] max-w-xl mx-auto px-4 py-2 rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-hairline)] inline-block">
+                                          {activePhoto.caption}
+                                        </p>
+                                        ) : (
+                                        <p className="text-xs text-[var(--text-muted)]">
+                                          Gunakan tombol panah kiri/kanan pada keyboard untuk berpindah foto.
+                                        </p>
               )}
-            </div>
+                                      </div>
           </div>
         )}
-      </Container>
-    </div>
-  )
+                                </Container>
+                            </div>
+                            )
 }

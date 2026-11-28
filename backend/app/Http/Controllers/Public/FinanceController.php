@@ -95,12 +95,20 @@ class FinanceController extends Controller
         usort($byCategoryIncome, fn ($a, $b) => $b['total'] <=> $a['total']);
         usort($byCategoryExpense, fn ($a, $b) => $b['total'] <=> $a['total']);
 
+        // Waktu publish transaksi terbit paling baru (null bila belum ada)
+        $rawLastPublished = FinanceTransaction::where('status', 'published')
+            ->max('published_at');
+        $lastPublishedAt = $rawLastPublished
+            ? \Illuminate\Support\Carbon::parse($rawLastPublished)->toIso8601String()
+            : null;
+
         return response()->json([
             'opening_balance' => $openingBalance,
             'opening_date' => $openingDate,
             'total_income' => $totalIncomeAll,
             'total_expense' => $totalExpenseAll,
             'balance' => $currentBalance,
+            'last_published_at' => $lastPublishedAt,
             'year' => $year,
             'total_income_year' => $totalIncomeYear,
             'total_expense_year' => $totalExpenseYear,

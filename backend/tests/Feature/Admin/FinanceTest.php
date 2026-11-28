@@ -678,4 +678,26 @@ class FinanceTest extends TestCase
             'id' => $this->catIncome->id,
         ]);
     }
+
+    /** 19. Endpoint public finance summary mengembalikan last_published_at null jika belum ada, dan ISO date jika ada. */
+    public function test_public_finance_summary_returns_last_published_at(): void
+    {
+        $resEmpty = $this->getJson('/api/public/finance/summary');
+        $resEmpty->assertOk();
+        $this->assertNull($resEmpty->json('last_published_at'));
+
+        FinanceTransaction::create([
+            'type' => 'income',
+            'category_id' => $this->catIncome->id,
+            'amount' => 150000,
+            'transaction_date' => now()->toDateString(),
+            'description' => 'Donasi Warga',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+
+        $resWithTx = $this->getJson('/api/public/finance/summary');
+        $resWithTx->assertOk();
+        $this->assertNotNull($resWithTx->json('last_published_at'));
+    }
 }

@@ -38,14 +38,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           aria-invalid={hasError}
           aria-describedby={describedBy}
           className={cn(
-            'w-full px-3.5 py-2.5 rounded-xl bg-[#060B18] text-[#E6ECF8] border text-sm transition-colors duration-150',
-            'placeholder:text-[#6B7A99] focus:outline-none focus:ring-2 focus:ring-[#22D3EE] focus:border-transparent min-h-[44px]',
+            'w-full px-3.5 py-2.5 rounded-[var(--radius-sm)] bg-[var(--bg-base)] text-[var(--text-main)] border text-base sm:text-sm transition-colors duration-150',
+            'placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent min-h-[44px]',
             hasError
               ? 'border-red-500 focus:ring-red-400'
-              : 'border-slate-800 hover:border-slate-700',
-            className,
+              : 'border-[var(--border-strong)] hover:border-slate-500',
+        className,
           )}
-          {...props}
+        {...props}
         />
         {helperText && !hasError && (
           <p id={helperId} className="text-xs text-[#9AA8C4]">

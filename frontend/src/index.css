@@ -30,12 +30,13 @@ body {
   background-color: var(--bg-base);
   color: var(--text-main);
   font-family: var(--font-family-sans);
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Angka tabular untuk data keuangan & tabel */
+/* Angka tabular untuk data keuangan, tanggal, & tabel */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
@@ -48,13 +49,12 @@ body {
 
 /* Seleksi teks */
 ::selection {
-  background-color: rgba(34, 211, 238, 0.25);
+  background-color: rgba(34, 211, 238, 0.22);
   color: var(--text-main);
 }
 
 /* Menghormati preferensi prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
@@ -65,19 +65,18 @@ body {
   }
 }
 
-/* Glassmorphism terukur (hanya untuk navbar scroll, StatCard unggulan, modal) */
+/* Permukaan header/modal terukur tanpa blur berlapis */
 .glass-effect {
-  background-color: rgba(12, 20, 39, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-subtle);
+  background-color: rgba(12, 20, 39, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-hairline);
 }
 
-/* Gradient aksen halus */
-.gradient-primary-accent {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-}
-
-.gradient-hero-bg {
-  background: radial-gradient(circle at 50% 0%, rgba(47, 107, 255, 0.15) 0%, rgba(34, 211, 238, 0.05) 45%, transparent 70%);
+/* Pola grid hairline statis untuk struktur presisi (tanpa glow/neon) */
+.bg-subtle-grid {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
+  background-size: 32px 32px;
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\AlbumController;
 use App\Http\Controllers\Admin\MemberController;
@@ -58,6 +59,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->name('login');
 
     Route::middleware(['auth:sanctum', 'admin.active', 'admin.password_change'])->group(function () {
+        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('me', [AuthController::class, 'me'])->name('me');
         Route::put('me/password', [AuthController::class, 'changePassword'])

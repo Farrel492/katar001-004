@@ -8,7 +8,7 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        'animate-pulse rounded-xl bg-slate-800/60 border border-slate-700/20',
+        'animate-pulse rounded-[var(--radius-sm)] bg-slate-800/60 border border-[var(--border-hairline)]',
         className,
       )}
       aria-hidden="true"

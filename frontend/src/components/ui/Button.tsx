@@ -30,22 +30,23 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
     ref,
   ) => {
     const baseClasses =
-      'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none'
+    'inline-flex items-center justify-center font-semibold rounded-[var(--radius-sm)] transition-colors duration-150 cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none'
 
     const sizeClasses: Record<ButtonSize, string> = {
-      sm: 'text-xs px-3 py-1.5 min-h-[36px] sm:min-h-[36px]',
-      md: 'text-sm px-4 py-2.5 min-h-[44px]', // Memenuhi target sentuh minimal 44px
-      lg: 'text-base px-6 py-3.5 min-h-[48px]',
+      sm: 'text-sm px-3.5 py-2 min-h-[44px] sm:min-h-[38px]',
+      md: 'text-sm sm:text-base px-4 py-2.5 min-h-[44px]',
+      lg: 'text-base px-6 py-3 min-h-[48px]',
     }
 
     const variantClasses: Record<ButtonVariant, string> = {
       primary:
-        'bg-[#2F6BFF] hover:bg-[#4F82FF] text-white shadow-lg shadow-blue-900/30 active:scale-[0.98]',
+      'bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white border border-transparent',
       secondary:
-        'bg-[#111B33] hover:bg-[#16223b] text-[#E6ECF8] border border-slate-700/60 hover:border-slate-500',
-      ghost: 'bg-transparent hover:bg-slate-800/40 text-[#9AA8C4] hover:text-[#E6ECF8]',
+      'bg-[var(--bg-elevated)] hover:bg-[#172442] text-[var(--text-main)] border border-[var(--border-strong)] hover:border-slate-500',
+      ghost:
+        'bg-transparent hover:bg-slate-800/40 text-[var(--text-muted)] hover:text-[var(--text-main)] border border-transparent',
       danger:
-        'bg-[#F87171] hover:bg-red-500 text-white shadow-lg shadow-red-950/40 active:scale-[0.98]',
+      'bg-[var(--danger)] hover:bg-red-700 text-white border border-transparent',
     }
 
     const combinedClassName = cn(
@@ -92,6 +93,8 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
           ref={ref as React.Ref<HTMLAnchorElement>}
           className={combinedClassName}
           aria-disabled={disabled || isLoading}
+          aria-label={props['aria-label']}
+          title={props.title}
         >
           {content}
         </Link>
@@ -105,6 +108,8 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Bu
           ref={ref as React.Ref<HTMLAnchorElement>}
           className={combinedClassName}
           aria-disabled={disabled || isLoading}
+          aria-label={props['aria-label']}
+          title={props.title}
         >
           {content}
         </a>

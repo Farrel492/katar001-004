@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -10,24 +10,47 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
+  X,
   ExternalLink,
   Loader2,
   ShieldCheck,
   Image as ImageIcon,
 } from 'lucide-react'
-import { Button } from '@/components/ui'
+import { Badge, Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { AdminAuthProvider, useAdminAuth } from '@/features/admin/context/AdminAuthContext'
 import { getAdminAspirationStats } from '@/lib/api'
 
-const BASE_NAV = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/profil', label: 'Profil & Struktur', icon: Users },
-  { to: '/admin/agenda', label: 'Agenda', icon: Calendar },
-  { to: '/admin/galeri', label: 'Galeri', icon: ImageIcon },
-  { to: '/admin/keuangan', label: 'Keuangan', icon: Wallet },
-  { to: '/admin/aspirasi', label: 'Aspirasi Warga', icon: MessageSquare },
+  interface NavItem {
+    to: string
+  label: string
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+  end?: boolean
+  }
+
+interface NavGroup {
+    group: string | null
+  items: NavItem[]
+  }
+
+const ROUTE_TITLES: Array<{ prefix: string; title: string; exact?: boolean }> = [
+  { prefix: '/admin', title: 'Dashboard', exact: true },
+  { prefix: '/admin/profil', title: 'Profil & Struktur' },
+  { prefix: '/admin/agenda', title: 'Agenda' },
+  { prefix: '/admin/galeri', title: 'Galeri' },
+  { prefix: '/admin/aspirasi', title: 'Aspirasi Warga' },
+  { prefix: '/admin/keuangan', title: 'Keuangan' },
+  { prefix: '/admin/pengguna', title: 'Manajemen Akun' },
 ]
+
+function getPageTitle(pathname: string): string {
+  for (const item of ROUTE_TITLES) {
+    if (item.exact ? pathname === item.prefix : pathname.startsWith(item.prefix)) {
+      return item.title
+    }
+  }
+  return 'Panel Admin'
+}
 
 function AdminLayoutContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -36,6 +59,9 @@ function AdminLayoutContent() {
   const [newAspirationsCount, setNewAspirationsCount] = useState<number>(0)
 
   const { currentUser, isLoading, logout } = useAdminAuth()
+  const location = useLocation()
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const drawerRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (!currentUser) return
@@ -50,259 +76,355 @@ function AdminLayoutContent() {
     return () => {
       mounted = false
     }
-  }, [currentUser])
+}, [currentUser, location.pathname])
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true)
-    try {
-      await logout()
-    } finally {
-      setIsLoggingOut(false)
+// Tutup drawer saat pindah halaman
+useEffect(() => {
+  setIsMobileDrawerOpen(false)
+}, [location.pathname])
+
+// Focus trap & Esc untuk mobile drawer
+useEffect(() => {
+  if (!isMobileDrawerOpen) {
+    document.body.style.overflow = ''
+    return
+  }
+  document.body.style.overflow = 'hidden'
+
+  const focusTimer = window.setTimeout(() => {
+    const firstFocusable = drawerRef.current?.querySelector<HTMLElement>(
+      'a[href], button:not([disabled])',
+    )
+    firstFocusable?.focus()
+  }, 20)
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setIsMobileDrawerOpen(false)
+      window.requestAnimationFrame(() => menuButtonRef.current?.focus())
+      return
+    }
+    if (e.key === 'Tab' && drawerRef.current) {
+      const focusables = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      )
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#060B18] text-[#E6ECF8] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-[#2F6BFF] animate-spin" />
-          <p className="text-sm text-[#9AA8C4]">Memuat sesi administrasi...</p>
-        </div>
-      </div>
-    )
+  window.addEventListener('keydown', handleKeyDown)
+  return () => {
+    window.clearTimeout(focusTimer)
+    window.removeEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = ''
   }
+}, [isMobileDrawerOpen])
 
-  // Siapkan navigasi dinamis: Menu Manajemen Akun HANYA untuk Superadmin
-  const navItems = [
-    ...BASE_NAV,
-    ...(currentUser?.role === 'superadmin'
-      ? [{ to: '/admin/pengguna', label: 'Manajemen Akun', icon: ShieldCheck }]
-      : []),
-  ]
-
-  const isSuperadmin = currentUser?.role === 'superadmin'
-  const roleLabel = isSuperadmin ? 'Superadmin' : 'Admin'
-  const initial = (currentUser?.name || currentUser?.username || 'A').charAt(0).toUpperCase()
-
-  return (
-    <div className="min-h-screen flex bg-[#060B18] text-[#E6ECF8]">
-      {/* 1. Desktop & Mobile Sidebar */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-40 bg-[#0C1427] border-r border-slate-800/80 transition-all duration-300 flex flex-col',
-          // Desktop Width
-          isSidebarCollapsed ? 'md:w-20' : 'md:w-64',
-          // Mobile Drawer Behavior
-          isMobileDrawerOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0',
-        )}
-        aria-label="Navigasi Panel Admin"
-      >
-        {/* Brand Header */}
-        <div className="h-16 sm:h-20 flex items-center justify-between px-4 border-b border-slate-800/80">
-          <Link
-            to="/admin"
-            className="flex items-center gap-3 overflow-hidden focus-visible:outline-2 focus-visible:outline-[#22D3EE] rounded-lg p-1"
-          >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2F6BFF] to-[#8B7CF6] flex items-center justify-center text-white font-bold shrink-0 shadow-md shadow-blue-950/40">
-              AD
-            </div>
-            {!isSidebarCollapsed && (
-              <div className="flex flex-col truncate">
-                <span className="font-extrabold text-sm text-white tracking-tight leading-tight">
-                  Admin Portal
-                </span>
-                <span className="text-xs text-[#9AA8C4] truncate">
-                  RT 001 RW 004
-                </span>
-              </div>
-            )}
-          </Link>
-
-          {/* Collapse Toggle Button (Desktop Only) */}
-          <button
-            type="button"
-            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-            className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg bg-[#111B33] border border-slate-700/60 text-[#9AA8C4] hover:text-white"
-            aria-label={isSidebarCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
-          >
-            {isSidebarCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
-        </div>
-
-        {/* Navigation Items */}
-        <nav className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto">
-          {
-            navItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === '/admin'}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-150 min-h-[44px]',
-                      'hover:bg-slate-800/40 hover:text-white focus-visible:outline-2 focus-visible:outline-[#22D3EE]',
-                      isActive
-                        ? 'bg-[#2F6BFF] text-white shadow-lg shadow-blue-950/50 font-semibold'
-                        : 'text-[#9AA8C4]',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <div className="relative shrink-0">
-                        <Icon className="w-5 h-5 shrink-0" aria-hidden="true" />
-                        {isSidebarCollapsed && item.to === '/admin/aspirasi' && newAspirationsCount > 0 && (
-                          <span
-                            className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#22D3EE] rounded-full ring-2 ring-[#0C1427]"
-                            title={`${newAspirationsCount} aspirasi baru`}
-                          />
-                        )}
-                      </div>
-                      {!isSidebarCollapsed && (
-                        <>
-                          <span
-                            className="truncate flex-1"
-                            aria-current={isActive ? 'page' : undefined}
-                          >
-                            {item.label}
-                          </span>
-                          {item.to === '/admin/aspirasi' && newAspirationsCount > 0 && (
-                            <span
-                              className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-cyan-500/20 text-[#22D3EE] border border-cyan-500/30 shrink-0"
-                              title={`${newAspirationsCount} aspirasi berstatus baru`}
-                            >
-                              {newAspirationsCount} Baru
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              )
-            })
-          }
-        </nav>
-
-        {/* Footer Area of Sidebar */}
-        <div className="p-4 border-t border-slate-800/80">
-          <Link
-            to="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              'flex items-center gap-2 text-xs text-[#9AA8C4] hover:text-[#22D3EE] transition-colors py-2 px-1',
-              isSidebarCollapsed && 'justify-center',
-            )}
-          >
-            <ExternalLink className="w-4 h-4 shrink-0" />
-            {!isSidebarCollapsed && <span>Buka Halaman Warga</span>}
-          </Link>
-        </div>
-      </aside>
-
-      {/* Backdrop Overlay for Mobile Drawer */}
-      {isMobileDrawerOpen && (
-        <div
-          onClick={() => setIsMobileDrawerOpen(false)}
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-xs md:hidden"
-          aria-hidden="true"
-        />
-      )}
-
-      {/* 2. Main Content Wrapper */}
-      <div
-        className={cn(
-          'flex-1 flex flex-col transition-all duration-300 min-w-0',
-          isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64',
-        )}
-      >
-        {/* Topbar Header */}
-        <header className="h-16 sm:h-20 bg-[#0C1427]/80 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-20 flex items-center justify-between px-4 sm:px-8">
-          <div className="flex items-center gap-3">
-            {/* Hamburger Button for Mobile Drawer */}
-            <button
-              type="button"
-              onClick={() => setIsMobileDrawerOpen(true)}
-              className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-[#111B33] border border-slate-700/60 text-[#E6ECF8]"
-              aria-label="Buka menu navigasi admin"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800/80 hidden sm:inline-block">
-              Area Administrasi (Internal)
-            </span>
-          </div>
-
-          {/* User Profile & Tombol Logout */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-2.5">
-              <div
-                className={cn(
-                  'w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold',
-                  isSuperadmin
-                    ? 'bg-purple-950/90 border-purple-500 text-purple-300'
-                    : 'bg-cyan-950/80 border-cyan-600 text-[#22D3EE]',
-                )}
-                aria-label={`Inisial ${currentUser?.name || currentUser?.username}`}
-              >
-                {initial}
-              </div>
-              <div className="hidden sm:flex flex-col text-right">
-                <span className="text-xs font-semibold text-[#E6ECF8]">
-                  {currentUser?.name || currentUser?.username}
-                </span>
-                <span
-                  className={cn(
-                    'text-[10px] font-semibold leading-tight tracking-wide uppercase',
-                    isSuperadmin ? 'text-purple-400' : 'text-cyan-400',
-                  )}
-                >
-                  {roleLabel}
-                </span>
-              </div>
-            </div>
-
-            {/* Tombol Keluar */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="text-[#F87171] hover:text-red-300 hover:bg-red-950/30 cursor-pointer min-h-[44px]"
-              title="Keluar dari sesi admin"
-            >
-              {isLoggingOut ? (
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-              ) : (
-                <LogOut className="w-4 h-4 mr-1.5" />
-              )}
-              <span className="hidden sm:inline">
-                {isLoggingOut ? 'Keluar...' : 'Keluar'}
-              </span>
-            </Button>
-          </div >
-        </header >
-
-        {/* Main Content Area */}
-        < main className="flex-1 p-4 sm:p-8" >
-          <Outlet />
-        </main >
-      </div >
-    </div >
-  )
+const handleLogout = async () => {
+  setIsLoggingOut(true)
+  try {
+    await logout()
+  } finally {
+    setIsLoggingOut(false)
+  }
 }
 
-export default function AdminLayout() {
+if (isLoading) {
   return (
-    <AdminAuthProvider>
-      <AdminLayoutContent />
-    </AdminAuthProvider>
-  )
+      <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-main)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-[var(--primary)] animate-spin" aria-hidden="true" />
+          <p className="text-sm text-[var(--text-muted)]">Memuat sesi administrasi...</p>
+        </div>
+      </div>
+      )
+  }
+
+      const isSuperadmin = currentUser?.role === 'superadmin'
+      const roleLabel = isSuperadmin ? 'Superadmin' : 'Admin'
+      const initial = (currentUser?.name || currentUser?.username || 'A').charAt(0).toUpperCase()
+      const pageTitle = getPageTitle(location.pathname)
+
+      const navGroups: NavGroup[] = [
+      {
+        group: null,
+      items: [{to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true }],
+    },
+      {
+        group: 'Konten',
+      items: [
+      {to: '/admin/profil', label: 'Profil', icon: Users },
+      {to: '/admin/agenda', label: 'Agenda', icon: Calendar },
+      {to: '/admin/galeri', label: 'Galeri', icon: ImageIcon },
+      ],
+    },
+      {
+        group: 'Interaksi',
+      items: [{to: '/admin/aspirasi', label: 'Aspirasi', icon: MessageSquare }],
+    },
+      {
+        group: 'Keuangan',
+      items: [{to: '/admin/keuangan', label: 'Keuangan', icon: Wallet }],
+    },
+      ...(isSuperadmin
+      ? [
+      {
+        group: 'Sistem',
+      items: [{to: '/admin/pengguna', label: 'Manajemen Akun', icon: ShieldCheck }],
+          },
+      ]
+      : []),
+      ]
+
+      return (
+        <div className="min-h-screen flex bg-[var(--bg-base)] text-[var(--text-main)] text-[15px]">
+          {/* Sidebar Desktop & Mobile Drawer */}
+          <aside
+            ref={drawerRef}
+            id="admin-sidebar"
+            role={isMobileDrawerOpen ? 'dialog' : undefined}
+            aria-modal={isMobileDrawerOpen ? 'true' : undefined}
+            className={cn(
+              'fixed inset-y-0 left-0 z-40 bg-[var(--bg-surface)] border-r border-[var(--border-hairline)] transition-all duration-200 flex flex-col',
+              isSidebarCollapsed ? 'md:w-20' : 'md:w-64',
+              isMobileDrawerOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0',
+            )}
+            aria-label="Navigasi Panel Admin"
+          >
+              {/* Header Sidebar */}
+              <div className="h-16 sm:h-18 flex items-center justify-between px-4 border-b border-[var(--border-hairline)]">
+                <Link
+                  to="/admin"
+                  className="flex items-center gap-3 overflow-hidden focus-visible:outline-2 focus-visible:outline-[var(--accent)] rounded-[var(--radius-sm)] p-1 min-h-[44px]"
+                >
+                    <span
+                      aria-hidden="true"
+                      className="w-9 h-9 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-main)] font-bold text-sm shrink-0"
+                    >
+                      AD
+                </span>
+                {!isSidebarCollapsed && (
+                      <span className="flex flex-col truncate">
+                        <span className="font-bold text-sm text-[var(--text-main)] tracking-tight leading-tight">
+                          Admin Portal
+                        </span>
+                          <span className="text-xs text-[var(--text-muted)] truncate">
+                            RT 001 RW 004
+                          </span>
+                      </span>
+            )}
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+                      className="hidden md:flex items-center justify-center w-9 h-9 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-hairline)] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                      aria-label={isSidebarCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
+                    >
+                      {isSidebarCollapsed ? (
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                      ) : (
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+                      )}
+                    </button>
+
+                    {isMobileDrawerOpen && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileDrawerOpen(false)
+                          window.requestAnimationFrame(() => menuButtonRef.current?.focus())
+                        }}
+                        className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-[var(--text-main)] cursor-pointer"
+                        aria-label="Tutup menu navigasi admin"
+                      >
+                        <X className="w-5 h-5" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+
+                                    {/* Grup Navigasi */ }
+                                    < nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto" aria-label="Menu Administrasi">
+                                  {navGroups.map((group, gIdx) => (
+                                    <div key={group.group ?? `root-${gIdx}`} className="space-y-1">
+                                      {group.group && !isSidebarCollapsed && (
+                                        <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">
+                                          {group.group}
+                                        </div>
+                                      )}
+                                      {group.items.map((item) => {
+                                        const Icon = item.icon
+                                        return (
+                                          <NavLink
+                                            key={item.to}
+                                            to={item.to}
+                                            end={item.end}
+                                            className={({ isActive }) =>
+                                              cn(
+                                                'flex items-center gap-3 px-3.5 py-2.5 rounded-[var(--radius-sm)] text-sm font-medium transition-colors duration-150 min-h-[44px]',
+                                                'hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
+                                                isActive
+                                                  ? 'bg-[var(--primary)] text-white font-semibold'
+                                                  : 'text-[var(--text-muted)]',
+                                              )
+                                            }
+                                          >
+                                            {({ isActive }) => (
+                                              <>
+                                                <div className="relative shrink-0">
+                                                  <Icon className="w-5 h-5 shrink-0" aria-hidden={true} />
+                                                  {isSidebarCollapsed && item.to === '/admin/aspirasi' && newAspirationsCount > 0 && (
+                                                    <span
+                                                      className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[var(--accent)] rounded-full ring-2 ring-[var(--bg-surface)]"
+                                                      title={`${newAspirationsCount} aspirasi baru`}
+                                                    />
+                                                  )}
+                                                </div>
+                                                {!isSidebarCollapsed && (
+                                                  <>
+                                                    <span
+                                                      className="truncate flex-1"
+                                                      aria-current={isActive ? 'page' : undefined}
+                                                    >
+                                                      {item.label}
+                                                    </span>
+                                      {item.to === '/admin/aspirasi' && newAspirationsCount > 0 && (
+                                        <span
+                                          className={cn(
+                                            'px-2 py-0.5 text-[11px] font-bold rounded-[var(--radius-sm)] tabular-nums shrink-0',
+                                            isActive
+                                              ? 'bg-white/20 text-white'
+                                              : 'bg-cyan-950/70 text-[var(--accent)] border border-cyan-800/70',
+                                          )}
+                                          title={`${newAspirationsCount} aspirasi berstatus baru`}
+                                        >
+                                          {newAspirationsCount}
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </NavLink>
+                          )
+              })}
+                        </div>
+                      ))}
+                </nav>
+
+                  {/* Footer Sidebar */}
+                  <div className="p-3 border-t border-[var(--border-hairline)]">
+                    <Link
+                      to="/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        'flex items-center gap-2 text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors px-3 min-h-[44px] rounded-[var(--radius-sm)]',
+                        isSidebarCollapsed && 'justify-center px-0',
+                      )}
+                    >
+                      <ExternalLink className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      {!isSidebarCollapsed && <span>Buka Halaman Warga</span>}
+                    </Link>
+                  </div>
+                </aside>
+
+                {/* Backdrop Overlay untuk Mobile Drawer */}
+                {isMobileDrawerOpen && (
+                  <div
+                    onClick={() => setIsMobileDrawerOpen(false)}
+                    className="fixed inset-0 z-30 bg-black/70 md:hidden"
+                    aria-hidden="true"
+                  />
+                )}
+
+                {/* Konten Utama */}
+                <div
+                  className={cn(
+                    'flex-1 flex flex-col transition-all duration-200 min-w-0',
+                    isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64',
+                  )}
+                >
+                      {/* Topbar */}
+                      <header className="h-16 sm:h-18 bg-[var(--bg-surface)] border-b border-[var(--border-hairline)] sticky top-0 z-20 flex items-center justify-between px-4 sm:px-8 gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <button
+                            ref={menuButtonRef}
+                            type="button"
+                            onClick={() => setIsMobileDrawerOpen(true)}
+                            aria-expanded={isMobileDrawerOpen}
+                            aria-controls="admin-sidebar"
+                            aria-label="Buka menu navigasi admin"
+                            className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-[var(--text-main)] cursor-pointer shrink-0"
+                          >
+                            <Menu className="w-5 h-5" aria-hidden="true" />
+                          </button>
+                            <span className="font-bold text-base sm:text-lg text-[var(--text-main)] truncate">
+                              {pageTitle}
+                            </span>
+                        </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className="w-9 h-9 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-strong)] flex items-center justify-center text-xs font-bold text-[var(--text-main)] shrink-0"
+                                aria-hidden="true"
+                              >
+                                {initial}
+                              </div>
+                                  <div className="hidden sm:flex items-center gap-2">
+                                    <span className="text-sm font-semibold text-[var(--text-main)]">
+                                      {currentUser?.name || currentUser?.username}
+                                    </span>
+                                    <Badge variant={isSuperadmin ? 'preview' : 'info'}>{roleLabel}</Badge>
+                                  </div>
+                              </div>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleLogout}
+                                disabled={isLoggingOut}
+                                className="text-[var(--danger-text)] hover:text-red-300 hover:bg-red-950/30 min-h-[44px]"
+                                title="Keluar dari sesi admin"
+                                aria-label="Keluar dari sesi admin"
+                              >
+                                {isLoggingOut ? (
+                <Loader2 className="w-4 h-4 sm:mr-1.5 animate-spin" aria-hidden="true" />
+                                ) : (
+                <LogOut className="w-4 h-4 sm:mr-1.5" aria-hidden="true" />
+                                )}
+                                <span className="hidden sm:inline">
+                                  {isLoggingOut ? 'Keluar...' : 'Keluar'}
+                                </span>
+                              </Button>
+                        </div>
+                      </header>
+
+                        <main className="flex-1 p-4 sm:p-8 min-w-0">
+                          <Outlet />
+              </main>
+            </div>
+        </div>
+        )
+}
+
+        export default function AdminLayout() {
+  return (
+        <AdminAuthProvider>
+          <AdminLayoutContent />
+        </AdminAuthProvider>
+        )
 }
